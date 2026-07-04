@@ -3,11 +3,10 @@ Missed calls service.
 
 Pulls inbound calls from Twilio that went unanswered or reached our AI but
 produced no call record in Supabase, so the dashboard can show them and let
-the user call back (with the AI or from their own phone) or mark handled.
+the user mark them handled after manual follow-up.
 
 Sync functions are called from async route handlers via asyncio.to_thread,
-mirroring the pattern in services/outbound_service.py and
-services/webhook_service.py.
+mirroring the pattern in services/webhook_service.py.
 
 Definition of a missed call (see docs/missed-calls/):
   1. Twilio inbound call with status in {no-answer, busy, failed, canceled}, OR
@@ -28,10 +27,6 @@ from services.call_records_service import (
     get_call_record_by_call_sid_sync,
     update_call_record_by_call_sid_sync,
 )
-
-# Campaign used to dial AI callbacks to missed calls. Created on first use.
-MISSED_CALL_CALLBACK_CAMPAIGN_NAME = "__missed_call_callbacks__"
-MISSED_CALL_CALLBACK_CAMPAIGN_TYPE = "missed_call_callback"
 
 # Storage-schema status sentinel set by "Mark handled".
 MISSED_HANDLED_STATUS = "missed_handled"
@@ -63,14 +58,18 @@ def _get_supabase_client():
 
 def _twilio_inbound_calls(since_hours: int, limit: int) -> list[dict[str, Any]]:
     """
-    Fetch recent inbound calls to the business number (TWILIO_OUTBOUND_NUMBER)
-    from the Twilio Calls API. Returns a normalized list of dicts.
+    Fetch recent inbound calls to the business number from the Twilio Calls API.
+    Returns a normalized list of dicts.
     """
     if not Config.has_twilio_credentials():
         return []
-    to_number = (Config.TWILIO_OUTBOUND_NUMBER or "").strip()
+    to_number = (
+        (getattr(Config, "TWILIO_PHONE_NUMBER", "") or "").strip()
+        or (getattr(Config, "TWILIO_NUMBER", "") or "").strip()
+        or (getattr(Config, "TWILIO_INBOUND_NUMBER", "") or "").strip()
+    )
     if not to_number:
-        Log.info("Missed calls: TWILIO_OUTBOUND_NUMBER not set; cannot filter inbound calls")
+        Log.info("Missed calls: TWILIO_PHONE_NUMBER not set; cannot filter inbound calls")
         return []
     try:
         from twilio.rest import Client
@@ -261,137 +260,3 @@ def mark_handled_sync(call_sid: str, caller_number: str | None = None) -> bool:
     except Exception as e:
         Log.error(f"Missed calls: insert handled call-record error: {e}")
         return False
-
-
-# ---------------------------------------------------------------------------
-# Singleton callback campaign (used by "Call back with AI")
-# ---------------------------------------------------------------------------
-
-def get_or_create_callback_campaign_sync() -> dict[str, Any] | None:
-    """
-    Return the singleton "missed call callbacks" campaign, creating it if missing.
-    Used by the callback-ai route so we can reuse the full outbound dial pipeline
-    (TwiML endpoint, media stream, system-message builder, status callback).
-    """
-    client = _get_supabase_client()
-    if not client:
-        return None
-    table = Config.SUPABASE_OUTBOUND_CAMPAIGNS_TABLE or "outbound_campaigns"
-    try:
-        r = (
-            client.table(table)
-            .select("*")
-            .eq("name", MISSED_CALL_CALLBACK_CAMPAIGN_NAME)
-            .limit(1)
-            .execute()
-        )
-        rows = (r.data or []) if hasattr(r, "data") else []
-        if rows:
-            return rows[0]
-    except Exception as e:
-        Log.error(f"Missed calls: lookup callback campaign error: {e}")
-        return None
-
-    # Not found — create it.
-    from services.outbound_service import create_campaign_sync
-    campaign = create_campaign_sync(
-        name=MISSED_CALL_CALLBACK_CAMPAIGN_NAME,
-        campaign_type=MISSED_CALL_CALLBACK_CAMPAIGN_TYPE,
-        message_template="",
-        concurrency=1,
-    )
-    return campaign
-
-
-def finalize_callback_if_missed_sync(outbound_call_sid: str, is_completed: bool) -> dict[str, Any]:
-    """
-    Post-call hook for the Twilio status callback: if this outbound call came from
-    a missed-call callback (contact has custom_fields.missed_call_sid), then:
-
-    - On completed: mark the original missed call as handled so it disappears
-      from the missed-calls list on next fetch.
-    - Always: append a note to the new lead row (by outbound call_sid) linking
-      it back to the original missed-call SID so users can see the provenance
-      in the Leads dashboard.
-
-    Returns a small dict describing what was done (for logging); silent no-op
-    when the call is not a missed-call callback.
-    """
-    result: dict[str, Any] = {"is_missed_callback": False}
-    outbound_call_sid = (outbound_call_sid or "").strip()
-    if not outbound_call_sid:
-        return result
-
-    client = _get_supabase_client()
-    if not client:
-        return result
-
-    contacts_table = Config.SUPABASE_OUTBOUND_CONTACTS_TABLE or "outbound_contacts"
-    try:
-        r = (
-            client.table(contacts_table)
-            .select("id, campaign_id, phone, custom_fields")
-            .eq("call_sid", outbound_call_sid)
-            .limit(1)
-            .execute()
-        )
-        rows = (r.data or []) if hasattr(r, "data") else []
-    except Exception as e:
-        Log.error(f"Missed calls: finalize lookup error: {e}")
-        return result
-    if not rows:
-        return result
-    contact = rows[0]
-    custom_fields = contact.get("custom_fields") or {}
-    original_sid = ""
-    if isinstance(custom_fields, dict):
-        original_sid = (custom_fields.get("missed_call_sid") or "").strip()
-    if not original_sid:
-        return result
-    result["is_missed_callback"] = True
-    result["original_call_sid"] = original_sid
-
-    if is_completed:
-        marked = mark_handled_sync(original_sid, caller_number=contact.get("phone"))
-        result["marked_handled"] = bool(marked)
-
-    # Append a provenance note to the lead captured during the callback (if any).
-    try:
-        from services.call_records_service import append_call_record_note_by_call_sid_sync
-        note = f"Outbound AI callback for missed call {original_sid}."
-        appended = append_call_record_note_by_call_sid_sync(outbound_call_sid, note)
-        result["note_appended"] = bool(appended)
-    except Exception as e:
-        Log.error(f"Missed calls: note append error: {e}")
-
-    Log.event("Missed-call callback finalized", result)
-    return result
-
-
-def add_callback_contact_sync(campaign_id: str, call_sid: str, phone: str) -> dict[str, Any] | None:
-    """
-    Insert a single contact row into the callback campaign for this missed call.
-    Stores the original call_sid in custom_fields for traceability.
-    """
-    phone = (phone or "").strip()
-    if not (campaign_id and phone):
-        return None
-    client = _get_supabase_client()
-    if not client:
-        return None
-    table = Config.SUPABASE_OUTBOUND_CONTACTS_TABLE or "outbound_contacts"
-    row = {
-        "campaign_id": campaign_id,
-        "name": "",
-        "phone": phone,
-        "email": "",
-        "custom_fields": {"missed_call_sid": call_sid or ""},
-        "status": "pending",
-    }
-    try:
-        r = client.table(table).insert(row).execute()
-        data = (r.data or []) if hasattr(r, "data") else []
-        return data[0] if data else None
-    except Exception as e:
-        Log.error(f"Missed calls: insert callback contact error: {e}")
-        return None

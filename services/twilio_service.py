@@ -14,10 +14,6 @@ from services.log_utils import Log
 _CALLER_CACHE: dict[str, tuple[str, float]] = {}
 _CALLER_CACHE_TTL_SEC = 300
 
-# CallSid -> (campaign_id, contact_id, timestamp); fallback when outbound stream customParameters are missing.
-_OUTBOUND_CONTEXT_CACHE: dict[str, tuple[str, str, float]] = {}
-
-
 class TwilioService:
     """
     Provides all Twilio integration logic for the application.
@@ -141,24 +137,6 @@ class TwilioService:
         return HTMLResponse(content=str(response), media_type="application/xml")
 
     @classmethod
-    def create_outbound_stream_response(
-        cls,
-        host: str,
-        campaign_id: str,
-        contact_id: Optional[str] = "",
-    ) -> HTMLResponse:
-        """Create TwiML for an answered outbound call to connect to Media Stream."""
-        response = VoiceResponse()
-        connect = Connect()
-        stream = connect.stream(url=f"wss://{host}/media-stream")
-        stream.parameter(name="direction", value="outbound")
-        stream.parameter(name="campaign_id", value=campaign_id)
-        if contact_id:
-            stream.parameter(name="contact_id", value=contact_id)
-        response.append(connect)
-        return HTMLResponse(content=str(response), media_type="application/xml")
-
-    @classmethod
     def get_caller_for_call(cls, call_sid: Optional[str]) -> Optional[str]:
         """
         Return From (caller number) for this call_sid if we stored it on the voice webhook.
@@ -175,33 +153,6 @@ class TwilioService:
             del _CALLER_CACHE[call_sid]
             return None
         return from_number
-
-    @classmethod
-    def register_outbound_context(cls, call_sid: str, campaign_id: str, contact_id: str) -> None:
-        """
-        Store (campaign_id, contact_id) for this call_sid so the media-stream handler
-        can apply the outbound agent if customParameters are unavailable.
-        """
-        if call_sid and campaign_id and contact_id:
-            _OUTBOUND_CONTEXT_CACHE[call_sid] = (campaign_id, contact_id, time.time())
-
-    @classmethod
-    def get_outbound_context(cls, call_sid: Optional[str]) -> Optional[tuple[str, str]]:
-        """
-        Return (campaign_id, contact_id) for this call_sid if we stored it when creating the outbound call.
-        Used when the media-stream start message does not include outbound context.
-        """
-        if not call_sid:
-            return None
-        now = time.time()
-        entry = _OUTBOUND_CONTEXT_CACHE.get(call_sid)
-        if not entry:
-            return None
-        campaign_id, contact_id, ts = entry
-        if now - ts > _CALLER_CACHE_TTL_SEC:
-            del _OUTBOUND_CONTEXT_CACHE[call_sid]
-            return None
-        return (campaign_id, contact_id)
 
     @staticmethod
     def create_media_message(stream_sid: str, audio_payload: str) -> dict:
@@ -370,50 +321,6 @@ class TwilioService:
             Log.error(f"Call recording start failed: {e}")
 
     @classmethod
-    async def create_outbound_call(
-        cls,
-        to: str,
-        twiml_url: str,
-        from_number: str = "",
-        status_callback: str = "",
-    ) -> object:
-        """
-        Initiate an outbound call via Twilio REST API.
-        Runs the sync REST call in a thread so the event loop is not blocked.
-
-        Args:
-            to: Destination phone number (E.164)
-            twiml_url: URL returning TwiML for the answered call
-            from_number: Caller ID number (E.164); falls back to Config
-            status_callback: URL for call status webhooks
-
-        Returns:
-            Twilio CallInstance object
-        """
-        if not Config.has_twilio_credentials():
-            raise RuntimeError("Twilio credentials not configured")
-        actual_from = (from_number or Config.get_outbound_from_number()).strip()
-        if not actual_from:
-            raise RuntimeError("No outbound From number configured (TWILIO_OUTBOUND_NUMBER)")
-
-        def _create():
-            from twilio.rest import Client
-            client = Client(Config.TWILIO_ACCOUNT_SID, Config.TWILIO_AUTH_TOKEN)
-            kwargs = {
-                "to": to,
-                "from_": actual_from,
-                "url": twiml_url,
-            }
-            if status_callback:
-                kwargs["status_callback"] = status_callback
-                kwargs["status_callback_event"] = ["initiated", "ringing", "answered", "completed"]
-            return client.calls.create(**kwargs)
-
-        call = await asyncio.to_thread(_create)
-        Log.event("Outbound call initiated", {"to": to, "from": actual_from, "call_sid": call.sid})
-        return call
-
-    @classmethod
     async def redirect_call_to_url_async(
         cls, call_sid: str, url: str, method: str = "POST"
     ) -> None:
@@ -449,8 +356,7 @@ class TwilioService:
     async def end_call_async(cls, call_sid: str) -> None:
         """
         End an active call by setting its status to 'completed' via Twilio REST.
-        Used when the user clicks Stop on an outbound call. Twilio will send the
-        status callback and the contact row will be updated to completed.
+        Used by the Realtime end_call tool after the goodbye audio has played.
         """
         call_sid = (call_sid or "").strip()
         if not call_sid:
@@ -467,7 +373,7 @@ class TwilioService:
 
         try:
             await asyncio.to_thread(_end)
-            Log.event("Outbound call ended by user", {"call_sid": call_sid})
+            Log.event("Call ended", {"call_sid": call_sid})
         except Exception as e:
             Log.error(f"End call failed: {e}")
             raise

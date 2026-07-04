@@ -1,6 +1,6 @@
 # Onboarding
 
-One-page path from clone to a working phone agent, with optional features in order. Visual flows: [Diagrams](./DIAGRAMS.md) · Interactive: Cursor canvas `voice-agent-architecture.canvas.tsx`.
+One-page path from clone to a working inbound phone agent, with optional features in order. Visual flows: [Diagrams](./DIAGRAMS.md).
 
 ---
 
@@ -15,7 +15,7 @@ One-page path from clone to a working phone agent, with optional features in ord
 | 5 | Twilio Voice webhook → `{URL}/incoming-call` | Inbound call reaches AI |
 | 6 | Place test call — greet, talk, say goodbye | Agent hangs up via `end_call` |
 
-Diagram: [§2 Inbound sequence](./DIAGRAMS.md#2-inbound-call-sequence) · [§19 First deploy](./DIAGRAMS.md#19-first-deploy-checklist)
+Diagram: [§1 Inbound call sequence](./DIAGRAMS.md#1-inbound-call-sequence)
 
 **Building for a specific client?** [Prompt-as-code](./PROMPT_AS_CODE.md) · [Multi-client workflow](./MULTI_CLIENT_WORKFLOW.md) · [Client discovery template](./templates/CLIENT_DISCOVERY.md)
 
@@ -32,7 +32,7 @@ Diagram: [§2 Inbound sequence](./DIAGRAMS.md#2-inbound-call-sequence) · [§19 
 
 After prompt changes: `python scripts/preview_system_prompt.py` and `pytest tests/test_system_instructions.py`
 
-Diagram: [§22 Prompt architecture](./DIAGRAMS.md#22-prompt-architecture-map) · Mapping: [STARTER_PROMPT_MAPPING.md](./references/STARTER_PROMPT_MAPPING.md)
+Diagram: [§2 Prompt pipeline](./DIAGRAMS.md#2-prompt-pipeline) · Mapping: [STARTER_PROMPT_MAPPING.md](./references/STARTER_PROMPT_MAPPING.md)
 
 ---
 
@@ -40,13 +40,12 @@ Diagram: [§22 Prompt architecture](./DIAGRAMS.md#22-prompt-architecture-map) ·
 
 | Order | Feature | Required env / setup | Diagram |
 | --- | --- | --- | --- |
-| 1 | **Dashboard + call records** | `CALL_RECORD_BACKEND=supabase`, Supabase schema, `DASHBOARD_USERS` | [§14–15](./DIAGRAMS.md#14-dashboard-authentication) |
-| 2 | **Google Calendar booking** | GCal service account JSON, `GOOGLE_CALENDAR_ID`, booking flags | [§13](./DIAGRAMS.md#13-google-calendar-booking-flow) |
-| 3 | **Outbound campaigns** | `OUTBOUND_ENABLED=true`, Twilio + Supabase, `OUTBOUND_BASE_URL` | [§9](./DIAGRAMS.md#9-outbound-campaign) |
-| 4 | **Call recording** | `CALL_RECORDING_ENABLED`, `RECORDING_STATUS_CALLBACK_BASE_URL` | [§10](./DIAGRAMS.md#10-call-recording-and-transcription) |
-| 5 | **Transcription** | `TRANSCRIPTION_MODEL` (e.g. `tiny`) | [§18](./DIAGRAMS.md#18-transcription-pipeline) |
-| 6 | **Missed-call AI callback** | Twilio creds + Supabase (reuses outbound) | [§17](./DIAGRAMS.md#17-missed-calls-and-ai-callback) |
-| 7 | **Dashboard runtime settings** | Supabase `app_settings` table | [§20](./DIAGRAMS.md#20-dynamic-settings-dashboard-overrides) |
+| 1 | **Dashboard + call records** | `CALL_RECORD_BACKEND=supabase`, Supabase schema, `DASHBOARD_USERS` | [§5](./DIAGRAMS.md#5-optional-post-call-services) |
+| 2 | **Google Calendar booking** | GCal service account JSON, `GOOGLE_CALENDAR_ID`, booking flags | [§3](./DIAGRAMS.md#3-tool-layer) |
+| 3 | **Call recording** | `CALL_RECORDING_ENABLED`, `RECORDING_STATUS_CALLBACK_BASE_URL` | [§5](./DIAGRAMS.md#5-optional-post-call-services) |
+| 4 | **Transcription** | `TRANSCRIPTION_MODEL` (e.g. `tiny`) | [§5](./DIAGRAMS.md#5-optional-post-call-services) |
+| 5 | **Missed-call list** | Twilio creds + `TWILIO_PHONE_NUMBER`; Supabase only needed to persist handled state | [§5](./DIAGRAMS.md#5-optional-post-call-services) |
+| 6 | **Dashboard runtime settings** | Supabase `app_settings` table | [§6](./DIAGRAMS.md#6-dynamic-settings-boundary) |
 
 ---
 
@@ -63,7 +62,7 @@ services/call_records_service.py Call record facade
 static/dashboard.html            Dashboard UI (optional)
 ```
 
-Full module diagram: [§11 Module map](./DIAGRAMS.md#11-module-map)
+Full module overview: [Architecture](./ARCHITECTURE.md)
 
 ---
 
@@ -90,7 +89,7 @@ Post-deploy:
 - Recording: `RECORDING_STATUS_CALLBACK_BASE_URL={SERVICE_URL}`
 - GCal on GCP: mount credentials via Cloud Run secrets (not local file path)
 
-Diagram: [§16 Deployment topology](./DIAGRAMS.md#16-deployment-topology)
+Diagram: [Master architecture](./MASTER_DIAGRAM.md)
 
 ---
 
@@ -101,4 +100,4 @@ Built-in tools live in `openai_service.py`. External/MCP tools use the scaffold 
 - `services/tool_registry.py` — register schemas + handlers
 - `services/mcp_adapter.py` — MCP loader (no-op placeholder)
 
-Diagram: [§23 External tools scaffold](./DIAGRAMS.md#23-external-tools-scaffold-mcp--tool-registry)
+Diagram: [§3 Tool layer](./DIAGRAMS.md#3-tool-layer)

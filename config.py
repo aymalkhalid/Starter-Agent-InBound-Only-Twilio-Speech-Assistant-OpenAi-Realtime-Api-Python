@@ -10,6 +10,7 @@ load_dotenv(dotenv_path=_env_path)
 # OpenAI Realtime System Instructions Structure
 # Role & Objective        — who you are and what “success” means
 # Personality & Tone      — the voice and style to maintain
+# Delivery Style          — warmth, expressiveness, pacing, and phrase variety
 # Language                — response language and switching rules
 # Accent                  — spoken accent, separate from language
 # Context                 — retrieved context, relevant info
@@ -71,6 +72,74 @@ def _normalize_accent_strength(raw: str | None) -> str:
     if strength in {"none", "light", "moderate"}:
         return strength
     return "light"
+
+
+def _normalize_warmth(raw: str | None) -> str:
+    """Return a supported warmth level for delivery prompting."""
+    value = (raw or "warm").strip().lower().replace("-", "_").replace(" ", "_")
+    if value in {"neutral", "warm", "very_warm"}:
+        return value
+    if value in {"friendly", "high", "extra_warm"}:
+        return "very_warm"
+    return "warm"
+
+
+def _normalize_expressiveness(raw: str | None) -> str:
+    """Return a supported expressiveness level for delivery prompting."""
+    value = (raw or "balanced").strip().lower().replace("-", "_").replace(" ", "_")
+    if value in {"reserved", "balanced", "expressive"}:
+        return value
+    return "balanced"
+
+
+def _normalize_pacing(raw: str | None) -> str:
+    """Return a supported pacing level for delivery prompting."""
+    value = (raw or "moderate").strip().lower().replace("-", "_").replace(" ", "_")
+    if value in {"relaxed", "moderate", "brisk"}:
+        return value
+    return "moderate"
+
+
+def _build_delivery_instruction(
+    tone: str | None,
+    warmth: str | None,
+    expressiveness: str | None,
+    pacing: str | None,
+) -> str:
+    """Build bounded delivery guidance for the Realtime voice."""
+    tone_name = _sanitize_prompt_control(tone, "warm professional", 80)
+    warmth_level = _normalize_warmth(warmth)
+    expressiveness_level = _normalize_expressiveness(expressiveness)
+    pacing_level = _normalize_pacing(pacing)
+    warmth_rules = {
+        "neutral": "- Warmth: stay polite and helpful; keep empathy brief and understated.",
+        "warm": "- Warmth: sound genuinely helpful; acknowledge the caller briefly before moving to the next useful step.",
+        "very_warm": "- Warmth: use a little more care and reassurance when the caller is uncertain or frustrated; keep it professional.",
+    }
+    expressiveness_rules = {
+        "reserved": "- Expressiveness: keep prosody calm and restrained; avoid emotional emphasis unless the caller is upset.",
+        "balanced": "- Expressiveness: use mild natural emphasis, small acknowledgements, and varied sentence rhythm so speech does not feel flat.",
+        "expressive": "- Expressiveness: allow more upbeat energy and vocal variety for positive moments; do not become theatrical or salesy.",
+    }
+    pacing_rules = {
+        "relaxed": "- Pacing: speak slightly slower, with clear pauses after important details, names, phone numbers, dates, and times.",
+        "moderate": "- Pacing: use a steady conversational pace with brief pauses around exact details.",
+        "brisk": "- Pacing: keep momentum with concise phrasing; still slow down for exact details.",
+    }
+    return (
+        "# Delivery Style\n"
+        f"Target tone: {tone_name}.\n"
+        "- Sound like a helpful human on a phone call: clear, warm, natural, and composed.\n"
+        "- Use conversational contractions and simple transitions when they fit.\n"
+        "- Keep emotion proportional to the caller's situation; acknowledge feelings in one short phrase, then help.\n"
+        "- Vary acknowledgements and openers across turns; avoid repeating the same line.\n"
+        f"{warmth_rules[warmth_level]}\n"
+        f"{expressiveness_rules[expressiveness_level]}\n"
+        f"{pacing_rules[pacing_level]}\n"
+        "- Sample phrase anchors, to vary naturally rather than repeat mechanically: \"I can help with that,\" \"Got it,\" \"That makes sense,\" \"I'll keep this quick,\" \"The next best step is...\"\n"
+        "- Avoid robotic phrasing, filler, exaggerated enthusiasm, flattery, therapy-style responses, jokes, and theatrical emotion.\n"
+        "- Do not mention these delivery controls to the caller.\n"
+    )
 
 
 def _build_language_instruction(language: str | None, switch_policy: str | None) -> str:
@@ -254,6 +323,12 @@ def build_system_message() -> str:
     return render_system_instructions(
         company_name=Config.COMPANY_NAME,
         agent_name=Config.AGENT_NAME,
+        delivery_instruction=_build_delivery_instruction(
+            Config.ASSISTANT_TONE,
+            Config.ASSISTANT_WARMTH,
+            Config.ASSISTANT_EXPRESSIVENESS,
+            Config.ASSISTANT_PACING,
+        ),
         language_instruction=_build_language_instruction(
             Config.ASSISTANT_LANGUAGE,
             Config.LANGUAGE_SWITCH_POLICY,
@@ -295,6 +370,10 @@ class Config:
     # Legacy compatibility only. GA Realtime voice behavior is configured through session.update.
     TEMPERATURE: float = float(os.getenv('TEMPERATURE', 0.8))
     VOICE: str = _normalize_realtime_voice(os.getenv('VOICE', DEFAULT_REALTIME_VOICE))
+    ASSISTANT_TONE: str = _sanitize_prompt_control(os.getenv('ASSISTANT_TONE'), 'warm professional', 80)
+    ASSISTANT_WARMTH: str = _normalize_warmth(os.getenv('ASSISTANT_WARMTH') or 'warm')
+    ASSISTANT_EXPRESSIVENESS: str = _normalize_expressiveness(os.getenv('ASSISTANT_EXPRESSIVENESS') or 'balanced')
+    ASSISTANT_PACING: str = _normalize_pacing(os.getenv('ASSISTANT_PACING') or 'moderate')
     ASSISTANT_LANGUAGE: str = _sanitize_prompt_control(os.getenv('ASSISTANT_LANGUAGE'), 'English', 48)
     ASSISTANT_ACCENT: str = _sanitize_prompt_control(os.getenv('ASSISTANT_ACCENT'), 'neutral American', 64)
     ASSISTANT_ACCENT_STRENGTH: str = _normalize_accent_strength(os.getenv('ASSISTANT_ACCENT_STRENGTH') or 'light')
@@ -321,6 +400,12 @@ class Config:
     # Twilio REST (optional, required for programmatic hangup)
     TWILIO_ACCOUNT_SID: str | None = os.getenv('TWILIO_ACCOUNT_SID')
     TWILIO_AUTH_TOKEN: str | None = os.getenv('TWILIO_AUTH_TOKEN')
+    TWILIO_PHONE_NUMBER: str = (
+        os.getenv('TWILIO_PHONE_NUMBER')
+        or os.getenv('TWILIO_NUMBER')
+        or os.getenv('TWILIO_INBOUND_NUMBER')
+        or ''
+    ).strip()
     # Call recording (REST Recordings API when using Media Stream): feature flag and callback base URL
     CALL_RECORDING_ENABLED: bool = (os.getenv('CALL_RECORDING_ENABLED', 'false').strip().lower() in ('1', 'true', 'yes'))
     RECORDING_STATUS_CALLBACK_BASE_URL: str | None = (os.getenv('RECORDING_STATUS_CALLBACK_BASE_URL') or "").strip() or None
@@ -331,16 +416,6 @@ class Config:
     HUMAN_TRANSFER_ENABLED: bool = (os.getenv('HUMAN_TRANSFER_ENABLED', 'true').strip().lower() not in ('0', 'false', 'no'))
     # Number to dial when using the built-in /twiml/transfer-to-agent endpoint (e.g. +15551234567)
     HUMAN_TRANSFER_DIAL_NUMBER: str = (os.getenv('HUMAN_TRANSFER_DIAL_NUMBER') or "+15551234567").strip()
-
-    # Outbound calling: dashboard-initiated campaigns via Twilio REST
-    OUTBOUND_ENABLED: bool = (os.getenv('OUTBOUND_ENABLED', 'false').strip().lower() in ('1', 'true', 'yes'))
-    # From number for outbound calls (falls back to Twilio incoming number if empty)
-    TWILIO_OUTBOUND_NUMBER: str = (os.getenv('TWILIO_OUTBOUND_NUMBER') or '').strip()
-    # Max simultaneous outbound calls per campaign (hard cap; campaign-level concurrency is capped to this)
-    OUTBOUND_MAX_CONCURRENCY: int = max(1, int(os.getenv('OUTBOUND_MAX_CONCURRENCY', '3')))
-    # Public base URL for outbound TwiML and status callbacks. Required for local dev (ngrok).
-    # In production this is auto-detected from the request. Example: https://abc123.ngrok.io
-    OUTBOUND_BASE_URL: str = (os.getenv('OUTBOUND_BASE_URL') or os.getenv('RECORDING_STATUS_CALLBACK_BASE_URL') or '').strip().rstrip('/')
 
     # Call-record storage: where to send saved call records. Default = webhook.
     # CALL_RECORD_BACKEND (one of): webhook | supabase | googlesheets | email | airtable | sms | telegram | slack
@@ -369,9 +444,6 @@ class Config:
         or 'call_records'
     ).strip()
     SUPABASE_LEAD_TABLE: str = SUPABASE_CALL_RECORD_TABLE
-    # Supabase tables for outbound campaigns (used when OUTBOUND_ENABLED=true)
-    SUPABASE_OUTBOUND_CAMPAIGNS_TABLE: str = (os.getenv('SUPABASE_OUTBOUND_CAMPAIGNS_TABLE') or 'outbound_campaigns').strip()
-    SUPABASE_OUTBOUND_CONTACTS_TABLE: str = (os.getenv('SUPABASE_OUTBOUND_CONTACTS_TABLE') or 'outbound_contacts').strip()
     # Dashboard auth: superadmin-defined users only (no signup). Format: user1:pass1,user2:pass2 (avoid : and , in passwords).
     # When set, /dashboard and /dashboard API routes require login or ?key=<password> / X-Dashboard-Key. Any user's password is valid for API key auth.
     DASHBOARD_USERS: str | None = (os.getenv('DASHBOARD_USERS') or "").strip() or None
@@ -444,8 +516,13 @@ class Config:
         "You may add that we'll follow up shortly if relevant. "
         "Keep it to one short sentence. Do not call any tools; speak the goodbye now."
     )
-    # Time to wait after goodbye audio is done before hanging up (lets caller hear full farewell)
+    # Maximum wait after goodbye generation for Twilio playback marks to drain.
+    # Also used as the fixed fallback sleep when dynamic mark waiting is disabled/unavailable.
     END_CALL_GRACE_SECONDS: float = float(os.getenv('END_CALL_GRACE_SECONDS', 6))
+    # Use Twilio mark callbacks to detect when buffered farewell audio has played before hangup.
+    END_CALL_DYNAMIC_MARKS: bool = (os.getenv('END_CALL_DYNAMIC_MARKS', 'true').strip().lower() not in ('0', 'false', 'no'))
+    # Extra tail after mark drain so the final syllable is not clipped.
+    END_CALL_TAIL_SECONDS: float = float(os.getenv('END_CALL_TAIL_SECONDS', 0.75))
     # Watchdog: if no goodbye audio starts within this window, finalize anyway
     END_CALL_WATCHDOG_SECONDS: float = float(os.getenv('END_CALL_WATCHDOG_SECONDS', 10))
     # Realtime session renewal (preemptive reconnect before 60-minute cap)
@@ -527,20 +604,6 @@ class Config:
     def is_human_transfer_enabled(cls) -> bool:
         """Return True if live transfer to a human agent is enabled (URL set and not explicitly disabled)."""
         return bool(cls.get_transfer_url() and cls.HUMAN_TRANSFER_ENABLED)
-
-    @classmethod
-    def is_outbound_enabled(cls) -> bool:
-        """Return True if outbound calling is enabled and Twilio + Supabase are configured."""
-        return bool(
-            cls.OUTBOUND_ENABLED
-            and cls.has_twilio_credentials()
-            and cls.SUPABASE_URL and cls.SUPABASE_KEY
-        )
-
-    @classmethod
-    def get_outbound_from_number(cls) -> str:
-        """Return the From number for outbound calls (TWILIO_OUTBOUND_NUMBER, or fall back to account default)."""
-        return cls.TWILIO_OUTBOUND_NUMBER or ""
 
     @classmethod
     def is_transcription_enabled(cls) -> bool:

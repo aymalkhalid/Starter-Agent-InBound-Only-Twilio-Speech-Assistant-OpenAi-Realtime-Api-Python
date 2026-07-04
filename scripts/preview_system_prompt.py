@@ -33,6 +33,10 @@ def main() -> int:
     parser.add_argument("--prompt-path", help="Prompt markdown path, default from SYSTEM_INSTRUCTIONS_PATH.")
     parser.add_argument("--company-name", help="Preview COMPANY_NAME.")
     parser.add_argument("--agent-name", help="Preview AGENT_NAME.")
+    parser.add_argument("--tone", help="Preview ASSISTANT_TONE.")
+    parser.add_argument("--warmth", help="Preview ASSISTANT_WARMTH: neutral, warm, very_warm.")
+    parser.add_argument("--expressiveness", help="Preview ASSISTANT_EXPRESSIVENESS: reserved, balanced, expressive.")
+    parser.add_argument("--pacing", help="Preview ASSISTANT_PACING: relaxed, moderate, brisk.")
     parser.add_argument("--language", help="Preview ASSISTANT_LANGUAGE.")
     parser.add_argument("--language-switch-policy", help="Preview LANGUAGE_SWITCH_POLICY.")
     parser.add_argument("--accent", help="Preview ASSISTANT_ACCENT.")
@@ -51,6 +55,14 @@ def main() -> int:
         Config.COMPANY_NAME = args.company_name
     if args.agent_name is not None:
         Config.AGENT_NAME = args.agent_name
+    if args.tone:
+        Config.ASSISTANT_TONE = args.tone
+    if args.warmth:
+        Config.ASSISTANT_WARMTH = args.warmth
+    if args.expressiveness:
+        Config.ASSISTANT_EXPRESSIVENESS = args.expressiveness
+    if args.pacing:
+        Config.ASSISTANT_PACING = args.pacing
     if args.language:
         Config.ASSISTANT_LANGUAGE = args.language
     if args.language_switch_policy:

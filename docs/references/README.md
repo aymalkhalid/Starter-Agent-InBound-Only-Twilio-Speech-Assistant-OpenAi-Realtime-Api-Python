@@ -7,7 +7,7 @@ Offline copies of upstream guidance used when designing prompts, tools, and sess
 | [openai-realtime-models-prompting.md](./openai-realtime-models-prompting.md) | Full OpenAI Realtime 2.0 and 1.5 prompting guide |
 | [STARTER_PROMPT_MAPPING.md](./STARTER_PROMPT_MAPPING.md) | How this repo's prompt and config map to the guide |
 
-The starter prompt covers preambles, reasoning effort, verbosity, exact entity capture, tool behavior/failures, instruction precision, silence/background-audio handling (`wait_for_user`), unclear-audio rules, and separate language/accent control. See [CONFIGURATION.md](../CONFIGURATION.md) for env vars and placeholders.
+The starter prompt covers preambles, reasoning effort, verbosity, exact entity capture, tool behavior/failures, instruction precision, silence/background-audio handling (`wait_for_user`), unclear-audio rules, delivery style, and separate language/accent control. See [CONFIGURATION.md](../CONFIGURATION.md) for env vars and placeholders.
 
 **Canonical source:** https://developers.openai.com/api/docs/guides/realtime-models-prompting
 

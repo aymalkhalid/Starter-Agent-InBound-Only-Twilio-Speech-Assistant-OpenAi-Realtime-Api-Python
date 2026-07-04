@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
@@ -219,6 +220,8 @@ class AudioService:
         self.format_converter = AudioFormatConverter()
         self.timing_manager = AudioTimingManager()
         self.buffer_manager = AudioBufferManager()
+        self._marks_drained_event = asyncio.Event()
+        self._marks_drained_event.set()
     
     def process_incoming_audio(self, twilio_data: dict) -> Optional[Dict[str, Any]]:
         """
@@ -322,6 +325,7 @@ class AudioService:
         Returns:
             Twilio mark message
         """
+        self._marks_drained_event.clear()
         self.buffer_manager.add_mark(mark_name)
         return {
             "event": "mark",
@@ -350,6 +354,29 @@ class AudioService:
         removed_mark = self.buffer_manager.remove_mark()
         if Config.SHOW_TIMING_MATH and removed_mark:
             print(f"Processed mark: {removed_mark}")
+        if not self.buffer_manager.has_pending_marks():
+            self._marks_drained_event.set()
+
+    def pending_mark_count(self) -> int:
+        """Return the number of Twilio marks still waiting for playback acknowledgement."""
+        return len(self.buffer_manager.mark_queue)
+
+    async def wait_for_marks_drained(self, timeout_seconds: float) -> bool:
+        """Wait until Twilio has acknowledged all pending marks.
+
+        Returns True when all marks drained before timeout, False otherwise.
+        """
+        if not self.buffer_manager.has_pending_marks():
+            self._marks_drained_event.set()
+            return True
+        timeout = max(0.0, float(timeout_seconds or 0))
+        if timeout <= 0:
+            return not self.buffer_manager.has_pending_marks()
+        try:
+            await asyncio.wait_for(self._marks_drained_event.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            return False
+        return not self.buffer_manager.has_pending_marks()
     
     def calculate_interruption_timing(self) -> Optional[int]:
         """

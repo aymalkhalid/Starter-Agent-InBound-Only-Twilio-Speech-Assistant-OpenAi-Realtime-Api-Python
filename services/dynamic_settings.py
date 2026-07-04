@@ -1,7 +1,7 @@
 """
 Dynamic settings: load runtime-safe overrides from Supabase and apply to Config.
 
-Dashboard Settings can change transcription, voice, VAD, booking, transfer, and
+Dashboard Settings can change transcription, voice, tone, VAD, booking, transfer, and
 similar knobs without editing .env. Main prompt content and industry behavior
 stay prompt-as-code in prompts/main_system_instructions.md. See docs/CONFIGURATION.md.
 """
@@ -13,8 +13,11 @@ from typing import Any
 from config import (
     Config,
     _normalize_accent_strength,
+    _normalize_expressiveness,
     _normalize_language_switch_policy,
+    _normalize_pacing,
     _normalize_realtime_voice,
+    _normalize_warmth,
     _sanitize_prompt_control,
 )
 from services.log_utils import Log
@@ -27,6 +30,10 @@ OVERRIDABLE_KEYS: dict[str, str] = {
     "TRANSCRIPT_ENHANCEMENT_ENABLED": "bool",
     "CALL_RECORDING_ENABLED": "bool",
     "VOICE": "str",
+    "ASSISTANT_TONE": "str",
+    "ASSISTANT_WARMTH": "str",
+    "ASSISTANT_EXPRESSIVENESS": "str",
+    "ASSISTANT_PACING": "str",
     "ASSISTANT_LANGUAGE": "str",
     "ASSISTANT_ACCENT": "str",
     "ASSISTANT_ACCENT_STRENGTH": "str",
@@ -132,6 +139,18 @@ def apply_overrides_to_config(overrides: dict[str, str]) -> None:
                 Config.CALL_RECORDING_ENABLED = bool(val)
             elif key == "VOICE":
                 Config.VOICE = _normalize_realtime_voice(val if isinstance(val, str) else None)
+            elif key == "ASSISTANT_TONE":
+                Config.ASSISTANT_TONE = _sanitize_prompt_control(val if isinstance(val, str) else None, "warm professional", 80)
+                prompt_needs_rebuild = True
+            elif key == "ASSISTANT_WARMTH":
+                Config.ASSISTANT_WARMTH = _normalize_warmth(val if isinstance(val, str) else None)
+                prompt_needs_rebuild = True
+            elif key == "ASSISTANT_EXPRESSIVENESS":
+                Config.ASSISTANT_EXPRESSIVENESS = _normalize_expressiveness(val if isinstance(val, str) else None)
+                prompt_needs_rebuild = True
+            elif key == "ASSISTANT_PACING":
+                Config.ASSISTANT_PACING = _normalize_pacing(val if isinstance(val, str) else None)
+                prompt_needs_rebuild = True
             elif key == "ASSISTANT_LANGUAGE":
                 Config.ASSISTANT_LANGUAGE = _sanitize_prompt_control(val if isinstance(val, str) else None, "English", 48)
                 prompt_needs_rebuild = True
@@ -201,6 +220,10 @@ def apply_overrides_to_config(overrides: dict[str, str]) -> None:
         "AGENT_NAME",
         "COMPANY_NAME",
         "BOOKING_ENABLED",
+        "ASSISTANT_TONE",
+        "ASSISTANT_WARMTH",
+        "ASSISTANT_EXPRESSIVENESS",
+        "ASSISTANT_PACING",
         "ASSISTANT_LANGUAGE",
         "ASSISTANT_ACCENT",
         "ASSISTANT_ACCENT_STRENGTH",

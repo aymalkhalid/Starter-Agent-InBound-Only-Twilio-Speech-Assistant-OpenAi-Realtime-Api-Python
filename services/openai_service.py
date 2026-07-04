@@ -713,7 +713,6 @@ class OpenAISessionManager:
     @staticmethod
     def create_session_update(
         caller_phone_number: Optional[str] = None,
-        system_message_override: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create a session update message for OpenAI Realtime API.
@@ -722,7 +721,6 @@ class OpenAISessionManager:
         - Voice: from Config.VOICE (e.g. marin, cedar); applied in session.audio.output.
         - Caller number is not set here (API requires session.prompt.id for prompt.variables).
           It is passed via the initial conversation item (create_initial_conversation_item).
-        - system_message_override: when set (e.g. outbound calls), uses this instead of Config.SYSTEM_MESSAGE.
         Tools list is built from config (webhook, booking).
         """
         turn_detection: Dict[str, Any]
@@ -751,7 +749,7 @@ class OpenAISessionManager:
             if isinstance(lang, str) and lang.strip():
                 tx["language"] = lang.strip()
             audio_input["transcription"] = tx
-        instructions = system_message_override or Config.SYSTEM_MESSAGE
+        instructions = Config.SYSTEM_MESSAGE
         runtime_policy_hint = _booking_runtime_policy_hint()
         if runtime_policy_hint:
             instructions = f"{instructions}\n\n{runtime_policy_hint}"
@@ -781,36 +779,21 @@ class OpenAISessionManager:
     @staticmethod
     def create_initial_conversation_item(
         caller_phone_number: Optional[str] = None,
-        is_outbound: bool = False,
     ) -> Dict[str, Any]:
         """
         Create an initial conversation item for AI-first interactions.
 
-        Inbound: uses the configured starter greeting so the voice agent
-        speaks the brand welcome. Outbound: uses a minimal "begin now" instruction so
-        the model follows its session-level outbound campaign instructions instead of
-        the inbound greeting.
+        Uses the configured starter greeting so the voice agent speaks the brand welcome.
         """
-        if is_outbound:
-            instruction = (
-                "The call has been answered. Begin the conversation now following "
-                "your session instructions. Greet the person and proceed."
-            )
-            if caller_phone_number:
-                instruction += (
-                    f"\n\nContext: The contact's (person you are calling) phone number is {caller_phone_number}. "
-                    "Use this for save_call_record contact_phone, book_appointment contact_phone, and similar tools—do not use the literal phrase 'caller_phone'."
-                )
-        else:
-            greeting = get_greeting_instruction(Config.COMPANY_NAME)
-            name = get_agent_name()
-            as_who = f"as {name}, the voice agent" if name else "as the voice agent"
-            instruction = (
-                f"Greet the caller with the following (deliver it naturally and warmly, {as_who}): {greeting} "
-                "Say only that greeting in the first response, then wait for the caller. Do not add a service list or extra intake question beyond the configured greeting."
-            )
-            if caller_phone_number:
-                instruction += f"\n\nContext: The caller's phone number is {caller_phone_number}. You may use this when confirming contact details, in booking (book_appointment contact_phone), or when saving a call record. Do not read the number aloud unless confirming; use it when relevant."
+        greeting = get_greeting_instruction(Config.COMPANY_NAME)
+        name = get_agent_name()
+        as_who = f"as {name}, the voice agent" if name else "as the voice agent"
+        instruction = (
+            f"Greet the caller with the following (deliver it naturally and warmly, {as_who}): {greeting} "
+            "Say only that greeting in the first response, then wait for the caller. Do not add a service list or extra intake question beyond the configured greeting."
+        )
+        if caller_phone_number:
+            instruction += f"\n\nContext: The caller's phone number is {caller_phone_number}. You may use this when confirming contact details, in booking (book_appointment contact_phone), or when saving a call record. Do not read the number aloud unless confirming; use it when relevant."
         return {
             "type": "conversation.item.create",
             "item": {
@@ -1151,7 +1134,6 @@ class OpenAIService:
     async def initialize_session(
         self,
         connection_manager,
-        system_message_override: str | None = None,
     ) -> None:
         """
         Initialize OpenAI session with proper configuration.
@@ -1159,7 +1141,6 @@ class OpenAIService:
         
         Args:
             connection_manager: WebSocket connection manager
-            system_message_override: When set (outbound calls), replaces Config.SYSTEM_MESSAGE for this session.
         """
         caller_phone = getattr(connection_manager.state, "caller_phone_number", None)
         if caller_phone:
@@ -1169,7 +1150,6 @@ class OpenAIService:
             })
         session_update = self.session_manager.create_session_update(
             caller_phone_number=caller_phone,
-            system_message_override=system_message_override,
         )
         tools = session_update.get("session", {}).get("tools", [])
         transfer_enabled = Config.is_human_transfer_enabled()
@@ -1226,22 +1206,17 @@ class OpenAIService:
             return
         Log.event("Caller number from cache — passed via initial greeting (no session.prompt; API requires prompt.id)", {"caller_phone": caller_phone})
 
-    async def send_initial_greeting(self, connection_manager, *, is_outbound: bool = False) -> None:
+    async def send_initial_greeting(self, connection_manager) -> None:
         """
         Send initial conversation item to make AI greet first.
 
-        For inbound: includes caller phone number and the configured greeting.
-        For outbound: sends a minimal "begin now" item so the model follows
-        its session-level campaign instructions for the first response.
+        Includes caller phone number and the configured greeting.
 
         Args:
             connection_manager: WebSocket connection manager
-            is_outbound: True when this is an outbound campaign call
         """
         caller_phone_number = getattr(connection_manager.state, "caller_phone_number", None)
-        if is_outbound:
-            Log.event("Outbound greeting: using session instructions (no inbound greeting injected)", {})
-        elif caller_phone_number:
+        if caller_phone_number:
             Log.event("Incoming caller number (traceability)", {
                 "incoming_caller_number": caller_phone_number,
                 "context": "passed to session for confirmation/lead and booking",
@@ -1249,7 +1224,7 @@ class OpenAIService:
         else:
             Log.event("No caller number passed to OpenAI — model has no caller_phone; must ask or will have no number", {})
         initial_item = self.session_manager.create_initial_conversation_item(
-            caller_phone_number, is_outbound=is_outbound,
+            caller_phone_number,
         )
         response_trigger = self.session_manager.create_response_trigger()
 
@@ -2023,21 +1998,58 @@ class OpenAIService:
                 return True
         return False
 
-    async def finalize_goodbye(self, connection_manager) -> None:
+    async def _wait_for_goodbye_playback(self, audio_service=None) -> None:
+        """Wait for Twilio playback to drain before hangup, with fixed-sleep fallback."""
+        grace = max(0.0, float(getattr(Config, 'END_CALL_GRACE_SECONDS', 6) or 0))
+        dynamic_marks = bool(getattr(Config, 'END_CALL_DYNAMIC_MARKS', True))
+        if not dynamic_marks or audio_service is None:
+            try:
+                Log.info(f"Grace sleep before hangup: {grace}s")
+                await asyncio.sleep(grace)
+            except Exception:
+                pass
+            return
+
+        tail = max(0.0, float(getattr(Config, 'END_CALL_TAIL_SECONDS', 0.75) or 0))
+        tail = min(tail, grace) if grace > 0 else 0.0
+        wait_timeout = max(0.0, grace - tail)
+        pending_marks = 0
+        drained = True
+        try:
+            pending_marks = int(audio_service.pending_mark_count())
+            if pending_marks:
+                Log.event("Waiting for Twilio farewell marks to drain", {
+                    "pending_marks": pending_marks,
+                    "timeout_seconds": wait_timeout,
+                    "tail_seconds": tail,
+                })
+                drained = await audio_service.wait_for_marks_drained(wait_timeout)
+            else:
+                Log.info("No pending Twilio marks before hangup; using tail buffer only")
+            if tail > 0:
+                await asyncio.sleep(tail)
+            Log.event("End-call playback wait complete", {
+                "dynamic_marks": True,
+                "initial_pending_marks": pending_marks,
+                "marks_drained": drained,
+                "tail_seconds": tail,
+            })
+        except Exception as e:
+            Log.error(f"End-call dynamic mark wait failed; falling back to grace sleep: {e}")
+            try:
+                await asyncio.sleep(grace)
+            except Exception:
+                pass
+
+    async def finalize_goodbye(self, connection_manager, audio_service=None) -> None:
         """After goodbye audio is finished, wait for playback then close and optionally complete the call via REST."""
         self._pending_goodbye = False
         self._goodbye_audio_heard = False
         self._goodbye_item_id = None
         self._cancel_goodbye_watchdog()
-        # Mark Twilio as closed immediately so late OpenAI events never send (avoids "WebSocket is not connected" after REST hangup).
+        await self._wait_for_goodbye_playback(audio_service)
+        # Mark Twilio as closed before REST hangup so late OpenAI events become no-ops.
         connection_manager.mark_twilio_closed()
-        # Grace period so the caller hears the full farewell before we hang up
-        grace = getattr(Config, 'END_CALL_GRACE_SECONDS', 6)
-        try:
-            Log.info(f"Grace sleep before hangup: {grace}s")
-            await asyncio.sleep(grace)
-        except Exception:
-            pass
         if Config.has_twilio_credentials():
             try:
                 from twilio.rest import Client
@@ -2058,7 +2070,7 @@ class OpenAIService:
         """Return True if a farewell has been queued and we await its completion."""
         return self._pending_goodbye
 
-    def mark_goodbye_audio_heard(self, item_id: Optional[str], connection_manager=None) -> None:
+    def mark_goodbye_audio_heard(self, item_id: Optional[str], connection_manager=None, audio_service=None) -> None:
         """Mark that we've begun receiving audio for the goodbye message and capture its item_id."""
         if self._pending_goodbye:
             first_audio = not self._goodbye_audio_heard
@@ -2066,9 +2078,9 @@ class OpenAIService:
             if item_id and not self._goodbye_item_id:
                 self._goodbye_item_id = item_id
             if first_audio and connection_manager is not None:
-                self._start_goodbye_watchdog(connection_manager, after_audio_started=True)
+                self._start_goodbye_watchdog(connection_manager, after_audio_started=True, audio_service=audio_service)
 
-    def _start_goodbye_watchdog(self, connection_manager, *, after_audio_started: bool = False) -> None:
+    def _start_goodbye_watchdog(self, connection_manager, *, after_audio_started: bool = False, audio_service=None) -> None:
         """Start a watchdog for no-audio or no-completion goodbye failures."""
         self._cancel_goodbye_watchdog()
         try:
@@ -2081,7 +2093,7 @@ class OpenAIService:
                         return
                     if after_audio_started:
                         Log.info("Goodbye response.done not detected in time; finalizing call")
-                        await self.finalize_goodbye(connection_manager)
+                        await self.finalize_goodbye(connection_manager, audio_service)
                     elif not self._goodbye_audio_heard:
                         Log.info("Goodbye audio not detected in time; finalizing call")
                         await self.finalize_goodbye(connection_manager)

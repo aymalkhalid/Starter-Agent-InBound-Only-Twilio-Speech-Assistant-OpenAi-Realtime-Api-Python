@@ -3,21 +3,21 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-Production-ready **Python/FastAPI** starter for inbound and outbound **phone AI agents**. [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams) bridge live caller audio to the [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime); you customize behavior in one markdown prompt and wire side effects through Python tool handlers.
+Production-ready **Python/FastAPI** starter for inbound **phone AI agents**. [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams) bridge live caller audio to the [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime); you customize behavior in one markdown prompt and wire side effects through Python tool handlers.
 
-**Repository:** [github.com/aymalkhalid/Twilio-speech-assistant-openai-realtime-api-python](https://github.com/aymalkhalid/Twilio-speech-assistant-openai-realtime-api-python)
+**Repository:** [github.com/aymalkhalid/Starter-Agent-InBound-Only-Twilio-Speech-Assistant-OpenAi-Realtime-Api-Python](https://github.com/aymalkhalid/Starter-Agent-InBound-Only-Twilio-Speech-Assistant-OpenAi-Realtime-Api-Python)
 
 ---
 
 ## Architecture
 
-One shared **WebSocket media bridge** (`/media-stream`) powers **inbound** calls and all **outbound** triggers (campaign bulk dial, single contact dial, missed-call AI callback). Optional layers—Supabase CRM, Google Calendar booking, human transfer, recording, and transcription—attach via Realtime tools and env config.
+One **WebSocket media bridge** (`/media-stream`) powers inbound calls from Twilio. Optional layers—Supabase CRM, Google Calendar booking, human transfer, recording, and transcription—attach via Realtime tools and env config.
 
 <p align="center">
   <a href="./docs/MASTER_DIAGRAM.md">
     <img
       src="docs/images/MasterArchitectureDiagram.png"
-      alt="Voice Agent Starter master architecture: inbound and outbound call triggers, shared WebSocket media bridge, Supabase CRM, Google Calendar, and optional post-call services"
+      alt="Voice Agent Starter master architecture: inbound call trigger, WebSocket media bridge, Supabase CRM, Google Calendar, and optional post-call services"
       width="900"
     />
   </a>
@@ -29,13 +29,12 @@ One shared **WebSocket media bridge** (`/media-stream`) powers **inbound** calls
 | --- | --- | --- |
 | Twilio + OpenAI Realtime | Yes | Phone audio ↔ speech AI (`OPENAI_API_KEY` + Twilio webhook) |
 | Inbound | Yes (default) | Caller → `/incoming-call` → `/media-stream` → default system prompt |
-| Outbound (3 triggers) | Optional | Dashboard or missed-call callback → Twilio REST dial → same `/media-stream` with campaign prompt |
-| Supabase CRM | Optional | Call records, dashboard, outbound campaigns, runtime settings |
+| Supabase CRM | Optional | Call records, dashboard, runtime settings |
 | Webhook CRM | Optional | `save_call_record` POST to `WEBHOOK_URL` (no dashboard) |
 | Google Calendar | Optional | Five booking tools when `BOOKING_ENABLED=true` |
 | Post-call | Optional | Twilio recording + faster-whisper transcription (dashboard-triggered) |
 
-**Diagram source & breakdown:** [docs/MASTER_DIAGRAM.md](./docs/MASTER_DIAGRAM.md) · **Detailed flows (23 Mermaid diagrams):** [docs/DIAGRAMS.md](./docs/DIAGRAMS.md) · **Module narrative:** [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+**Diagram source & breakdown:** [docs/MASTER_DIAGRAM.md](./docs/MASTER_DIAGRAM.md) · **Detailed flows:** [docs/DIAGRAMS.md](./docs/DIAGRAMS.md) · **Module narrative:** [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 
 ---
 
@@ -62,7 +61,6 @@ One shared **WebSocket media bridge** (`/media-stream`) powers **inbound** calls
 
 - Supabase call-record **dashboard** (`/dashboard`, `/calls`)
 - **Google Calendar** appointment booking
-- **Outbound** campaigns and missed-call AI callback
 - Call **recording**, playback proxy, and **Whisper** transcription
 - Dashboard **runtime settings** (voice, VAD, booking) via Supabase
 - MCP / external tool registry scaffold (disabled in v1)
@@ -74,8 +72,8 @@ One shared **WebSocket media bridge** (`/media-stream`) powers **inbound** calls
 **Prerequisites:** Python 3.10+, [OpenAI API key](https://platform.openai.com/api-keys), [Twilio account](https://www.twilio.com/) with a Voice number, and a public HTTPS URL (ngrok or Cloud Run).
 
 ```bash
-git clone https://github.com/aymalkhalid/Twilio-speech-assistant-openai-realtime-api-python.git
-cd Twilio-speech-assistant-openai-realtime-api-python
+git clone https://github.com/aymalkhalid/Starter-Agent-InBound-Only-Twilio-Speech-Assistant-OpenAi-Realtime-Api-Python.git
+cd Starter-Agent-InBound-Only-Twilio-Speech-Assistant-OpenAi-Realtime-Api-Python
 
 python3 -m venv env
 source env/bin/activate
@@ -105,7 +103,7 @@ https://YOUR_PUBLIC_HOST/incoming-call
 | --- | --- |
 | Conversation behavior | `prompts/main_system_instructions.md` |
 | Tool schemas + handlers | `services/openai_service.py` |
-| Voice, language, accent, reasoning | `.env` or dashboard Settings (see [CONFIGURATION.md](./docs/CONFIGURATION.md)) |
+| Voice, tone, language, accent, reasoning | `.env` or dashboard Settings (see [CONFIGURATION.md](./docs/CONFIGURATION.md)) |
 | Greeting / farewell phrasing | `system_instructions.py` |
 
 Prompting follows the [OpenAI Realtime guide](./docs/references/openai-realtime-models-prompting.md). Section mapping: [STARTER_PROMPT_MAPPING.md](./docs/references/STARTER_PROMPT_MAPPING.md).
@@ -127,6 +125,10 @@ AGENT_NAME=Alex
 OPENAI_REALTIME_MODEL=gpt-realtime-2
 REALTIME_REASONING_EFFORT=low
 VOICE=cedar
+ASSISTANT_TONE=warm professional
+ASSISTANT_WARMTH=warm
+ASSISTANT_EXPRESSIVENESS=balanced
+ASSISTANT_PACING=moderate
 ASSISTANT_LANGUAGE=English
 ASSISTANT_ACCENT=neutral American
 ASSISTANT_ACCENT_STRENGTH=light
@@ -143,7 +145,7 @@ LANGUAGE_SWITCH_POLICY=default_only
 | [ONBOARDING.md](./docs/ONBOARDING.md) | Clone → live agent checklist |
 | [PROMPT_AS_CODE.md](./docs/PROMPT_AS_CODE.md) | Code-first prompt customization workflow |
 | [MULTI_CLIENT_WORKFLOW.md](./docs/MULTI_CLIENT_WORKFLOW.md) | Separate deploy per client (real estate, lead qualifier, …) |
-| [DIAGRAMS.md](./docs/DIAGRAMS.md) | 23 architecture Mermaid diagrams |
+| [DIAGRAMS.md](./docs/DIAGRAMS.md) | Inbound architecture Mermaid diagrams |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Module overview and runtime flow |
 | [CONFIGURATION.md](./docs/CONFIGURATION.md) | Env vars and prompt placeholders |
 | [TOOLS.md](./docs/TOOLS.md) | Realtime tool behavior |

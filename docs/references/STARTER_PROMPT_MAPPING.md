@@ -5,7 +5,7 @@ This maps the starter's main system prompt to sections in [openai-realtime-model
 **Live prompt:** `prompts/main_system_instructions.md`  
 **Tool schemas:** `services/openai_service.py`  
 **Runtime config:** `config.py`, `.env`  
-**Architecture diagrams:** [DIAGRAMS.md](../DIAGRAMS.md) §22 (prompt map), [ARCHITECTURE.md](../ARCHITECTURE.md)
+**Architecture diagrams:** [DIAGRAMS.md](../DIAGRAMS.md) §2 (prompt pipeline), [ARCHITECTURE.md](../ARCHITECTURE.md)
 
 ## Current coverage
 
@@ -15,6 +15,7 @@ This maps the starter's main system prompt to sections in [openai-realtime-model
 | Conversation Flow | `# Conversation Flow` | Lightweight intake; not a full state machine |
 | Reasoning | `# Reasoning`, `{reasoning_effort_instruction}` | OpenAI when/when-not rules; API effort injected for gpt-realtime-2 |
 | Personality and Tone | `# Personality and Tone` | Short phone-friendly style |
+| Delivery Style | `{delivery_instruction}` | Runtime-safe tone, warmth, expressiveness, pacing |
 | Language | `{language_instruction}` | English-primary by default; optional multilingual via `LANGUAGE_SWITCH_POLICY` |
 | Accent | `{accent_instruction}` | English delivery with configurable accent; separate from language |
 | Preambles | `# Preambles` | OpenAI-aligned when/when-not/style; mapped to slow tools |
@@ -63,7 +64,7 @@ Both are copied in [openai-realtime-models-prompting.md](./openai-realtime-model
 1. Identify the behavior gap or new feature.
 2. Find the matching section in the [OpenAI guide](./openai-realtime-models-prompting.md).
 3. Update `prompts/main_system_instructions.md` first.
-4. Update `config.py` builders or `.env` when language, accent, reasoning effort, or feature toggles are involved.
+4. Update `config.py` builders or `.env` when delivery, language, accent, reasoning effort, or feature toggles are involved.
 5. Update `services/openai_service.py` if tools or side effects change.
 6. Update [docs/CONFIGURATION.md](../CONFIGURATION.md) when placeholders or env vars change.
 7. Run `pytest tests/test_system_instructions.py` after prompt or config builder changes.

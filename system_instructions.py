@@ -16,6 +16,7 @@ DEFAULT_SYSTEM_INSTRUCTIONS_PATH = PROJECT_ROOT / "prompts" / "main_system_instr
 REQUIRED_PROMPT_PLACEHOLDERS = (
     "{agent_name}",
     "{company_name}",
+    "{delivery_instruction}",
     "{language_instruction}",
     "{accent_instruction}",
     "{reasoning_effort_instruction}",
@@ -99,6 +100,7 @@ def render_system_instructions(
     *,
     company_name: str,
     agent_name: str,
+    delivery_instruction: str,
     language_instruction: str,
     accent_instruction: str,
     reasoning_effort_instruction: str = "",
@@ -113,6 +115,7 @@ def render_system_instructions(
     replacements = {
         "{company_name}": company_name,
         "{agent_name}": agent_name or "the voice agent",
+        "{delivery_instruction}": delivery_instruction.strip(),
         "{language_instruction}": language_instruction.strip(),
         "{accent_instruction}": accent_instruction.strip(),
         "{reasoning_effort_instruction}": reasoning_effort_instruction.strip(),

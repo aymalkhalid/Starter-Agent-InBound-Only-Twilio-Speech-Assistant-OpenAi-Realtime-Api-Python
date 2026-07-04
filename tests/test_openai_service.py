@@ -14,6 +14,7 @@ load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
+from services.audio_service import AudioService
 from services.openai_service import OpenAISessionManager, OpenAIService
 import services.openai_service as openai_service_module
 import services.webhook_service as webhook_service_module
@@ -722,6 +723,44 @@ def test_goodbye_completion_watchdog_finalizes_after_audio_started(monkeypatch):
 
     asyncio.run(_run())
     assert service.is_goodbye_pending() is False
+    assert connection_manager.marked_twilio_closed is True
+    assert connection_manager.close_twilio_calls == [{"code": 1000, "reason": "assistant completed"}]
+
+
+def test_audio_service_waits_for_marks_to_drain():
+    audio_service = AudioService()
+    audio_service.create_mark_message("MZ123")
+
+    async def _run():
+        wait_task = asyncio.create_task(audio_service.wait_for_marks_drained(0.5))
+        await asyncio.sleep(0.01)
+        assert wait_task.done() is False
+        audio_service.handle_mark_event()
+        assert await wait_task is True
+
+    asyncio.run(_run())
+    assert audio_service.pending_mark_count() == 0
+
+
+def test_finalize_goodbye_waits_for_twilio_marks_before_closing(monkeypatch):
+    service = OpenAIService()
+    connection_manager = _DummyConnectionManager(call_sid="CA_end")
+    audio_service = AudioService()
+    audio_service.create_mark_message("MZ123")
+    monkeypatch.setattr(Config, "END_CALL_DYNAMIC_MARKS", True)
+    monkeypatch.setattr(Config, "END_CALL_GRACE_SECONDS", 1)
+    monkeypatch.setattr(Config, "END_CALL_TAIL_SECONDS", 0)
+    monkeypatch.setattr(Config, "TWILIO_ACCOUNT_SID", None)
+    monkeypatch.setattr(Config, "TWILIO_AUTH_TOKEN", None)
+
+    async def _run():
+        finalize_task = asyncio.create_task(service.finalize_goodbye(connection_manager, audio_service))
+        await asyncio.sleep(0.01)
+        assert connection_manager.marked_twilio_closed is False
+        audio_service.handle_mark_event()
+        await asyncio.wait_for(finalize_task, timeout=1)
+
+    asyncio.run(_run())
     assert connection_manager.marked_twilio_closed is True
     assert connection_manager.close_twilio_calls == [{"code": 1000, "reason": "assistant completed"}]
 

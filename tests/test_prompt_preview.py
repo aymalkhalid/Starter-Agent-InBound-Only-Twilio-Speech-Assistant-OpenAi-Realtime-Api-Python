@@ -24,6 +24,10 @@ def test_prompt_preview_script_prints_rendered_system_prompt():
             "Example HVAC",
             "--agent-name",
             "Nia",
+            "--tone",
+            "calm helpful",
+            "--warmth",
+            "warm",
             "--language",
             "English",
             "--accent",
@@ -39,6 +43,8 @@ def test_prompt_preview_script_prints_rendered_system_prompt():
     prompt = result.stdout
     assert "Example HVAC" in prompt
     assert "Nia" in prompt
+    assert "# Delivery Style" in prompt
+    assert "Target tone: calm helpful." in prompt
     assert "save_call_record" in prompt
     assert "{company_name}" not in prompt
     assert "{agent_name}" not in prompt

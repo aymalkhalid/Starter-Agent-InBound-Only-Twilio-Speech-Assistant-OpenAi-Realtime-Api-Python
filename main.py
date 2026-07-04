@@ -9,7 +9,7 @@ import hashlib
 import time
 import websockets
 from datetime import datetime, timezone
-from urllib.parse import parse_qs, quote
+from urllib.parse import parse_qs
 from pathlib import Path
 
 import httpx
@@ -474,8 +474,11 @@ async def dashboard_page(
     inject = (key or "") if auth.get("signing_key") else ""
     html = html.replace("__DASHBOARD_KEY_PLACEHOLDER__", inject)
     # Inject business timezone (from .env TIMEZONE) for date/time display
+    # The built-in Python function getattr(object, name, default) retrieves the value of the attribute named 'name' from 'object'.
+    # If the attribute doesn't exist, it returns 'default' instead of raising an error.
     tz = getattr(Config, "TIMEZONE", "America/Los_Angeles") or "America/Los_Angeles"
     html = html.replace("__DASHBOARD_TIMEZONE_PLACEHOLDER__", tz.replace("\\", "\\\\").replace("'", "\\'"))
+    # Similarly, getattr here gets the 'COMPANY_NAME' attribute from Config, or returns an empty string if it doesn't exist
     company = getattr(Config, "COMPANY_NAME", None) or ""
     html = html.replace("__DASHBOARD_COMPANY_PLACEHOLDER__", html_module.escape(company))
     return HTMLResponse(html)
@@ -561,397 +564,7 @@ async def handle_incoming_call(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# Outbound calling: TwiML for answered outbound calls + status callback
-# ---------------------------------------------------------------------------
-
-@app.api_route("/outbound-call-twiml/{campaign_id}", methods=["GET", "POST"])
-async def outbound_call_twiml(request: Request, campaign_id: str, contact_id: str = Query("")):
-    """
-    Return TwiML for an answered outbound call. Twilio fetches this URL when
-    the callee picks up. Connects to the same /media-stream WebSocket with
-    outbound context in Twilio custom parameters so the handler builds a
-    campaign-specific prompt after the stream start message arrives.
-    """
-    host = request.url.hostname
-    return TwilioService.create_outbound_stream_response(host, campaign_id, contact_id)
-
-
-@app.api_route("/outbound-call-status", methods=["POST"])
-async def outbound_call_status(request: Request):
-    """
-    Twilio status callback for outbound calls. Updates the contact row in
-    Supabase when the call completes (answered, no-answer, busy, failed).
-    """
-    try:
-        body = await request.body()
-        params = parse_qs(body.decode("utf-8", errors="replace")) if body else {}
-        call_sid = (params.get("CallSid") or params.get("callsid") or [""])[0]
-        call_status = (params.get("CallStatus") or params.get("callstatus") or [""])[0]
-        if not call_sid:
-            return JSONResponse({"ok": True})
-
-        from services.outbound_service import update_contact_status_sync
-        terminal_statuses = {"completed", "busy", "no-answer", "failed", "canceled"}
-        if call_status.lower() in terminal_statuses:
-            is_completed = call_status.lower() == "completed"
-            final_status = "completed" if is_completed else "failed"
-            error_msg = "" if is_completed else call_status
-            await asyncio.to_thread(
-                update_contact_status_sync,
-                contact_id="",
-                status=final_status,
-                call_sid=call_sid,
-                error=error_msg,
-            )
-            # Missed-call-callback provenance: if this outbound call was born from a
-            # missed call, mark the original as handled (on completed) and append a
-            # note to the new lead row linking back to the missed CallSid.
-            from services.missed_calls_service import finalize_callback_if_missed_sync
-            await asyncio.to_thread(finalize_callback_if_missed_sync, call_sid, is_completed)
-    except Exception as e:
-        Log.error(f"Outbound call status callback error: {e}")
-    return JSONResponse({"ok": True})
-
-
-# ---------------------------------------------------------------------------
-# Outbound campaigns: CRUD + execution endpoints (dashboard-facing)
-# ---------------------------------------------------------------------------
-
-def _require_outbound_enabled():
-    """Guard: raise 403 if outbound calling is not enabled."""
-    if not Config.is_outbound_enabled():
-        raise HTTPException(status_code=403, detail="Outbound calling not enabled (set OUTBOUND_ENABLED=true with Twilio + Supabase)")
-
-
-@app.get("/outbound/campaign-types", response_class=JSONResponse)
-async def get_outbound_campaign_types(
-    request: Request,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Return built-in campaign type definitions for the dashboard dropdown and template prefill.
-    Does NOT require outbound enabled; presets are available before full outbound config."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    from services.outbound_service import get_campaign_types
-    return {"campaign_types": get_campaign_types()}
-
-
-@app.get("/outbound/campaigns", response_class=JSONResponse)
-async def list_outbound_campaigns(
-    request: Request,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    status: str | None = Query(None),
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """List outbound campaigns. Requires dashboard auth."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import list_campaigns_sync
-    campaigns, total = await asyncio.to_thread(list_campaigns_sync, limit, offset, status)
-    return {"campaigns": campaigns, "count": len(campaigns), "total": total}
-
-
-@app.post("/outbound/campaigns", response_class=JSONResponse)
-async def create_outbound_campaign(
-    request: Request,
-    body: dict = Body(...),
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Create a new outbound campaign (draft). Requires dashboard auth."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    name = (body.get("name") or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Campaign name is required")
-    campaign_type = (body.get("campaign_type") or "general").strip()
-    message_template = (body.get("message_template") or "").strip()
-    concurrency = max(1, min(int(body.get("concurrency") or 1), Config.OUTBOUND_MAX_CONCURRENCY))
-    from services.outbound_service import create_campaign_sync
-    campaign = await asyncio.to_thread(create_campaign_sync, name, campaign_type, message_template, concurrency)
-    if not campaign:
-        raise HTTPException(status_code=500, detail="Failed to create campaign")
-    return {"campaign": campaign}
-
-
-@app.get("/outbound/campaigns/{campaign_id}", response_class=JSONResponse)
-async def get_outbound_campaign(
-    request: Request,
-    campaign_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Get a campaign with its contacts. Requires dashboard auth."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import get_campaign_sync
-    campaign = await asyncio.to_thread(get_campaign_sync, campaign_id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    return {"campaign": campaign}
-
-
-@app.patch("/outbound/campaigns/{campaign_id}", response_class=JSONResponse)
-async def update_outbound_campaign(
-    request: Request,
-    campaign_id: str,
-    body: dict = Body(...),
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Update a draft campaign. Requires dashboard auth."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import update_campaign_sync
-    ok = await asyncio.to_thread(update_campaign_sync, campaign_id, body)
-    if not ok:
-        raise HTTPException(status_code=404, detail="Campaign not found or no valid fields to update")
-    return {"ok": True}
-
-
-@app.delete("/outbound/campaigns/{campaign_id}", response_class=JSONResponse)
-async def delete_outbound_campaign(
-    request: Request,
-    campaign_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Delete a campaign and all its contacts (cascade). Requires dashboard auth."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import delete_campaign_sync
-    ok = await asyncio.to_thread(delete_campaign_sync, campaign_id)
-    if not ok:
-        raise HTTPException(status_code=404, detail="Campaign not found or delete failed")
-    return {"ok": True}
-
-
-@app.post("/outbound/campaigns/{campaign_id}/contacts", response_class=JSONResponse)
-async def add_outbound_contacts(
-    request: Request,
-    campaign_id: str,
-    body: dict = Body(...),
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """
-    Add contacts to a campaign. Body: { "contacts": [ { "name": "...", "phone": "+1...", "email": "...", "custom_fields": {...} }, ... ] }
-    Requires dashboard auth.
-    """
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    contacts = body.get("contacts")
-    if not contacts or not isinstance(contacts, list):
-        raise HTTPException(status_code=400, detail="contacts must be a non-empty array")
-    for i, c in enumerate(contacts):
-        if not (c.get("phone") or "").strip():
-            raise HTTPException(status_code=400, detail=f"Contact at index {i} is missing a phone number")
-    from services.outbound_service import add_contacts_sync
-    inserted = await asyncio.to_thread(add_contacts_sync, campaign_id, contacts)
-    return {"contacts": inserted, "count": len(inserted)}
-
-
-@app.delete("/outbound/campaigns/{campaign_id}/contacts/{contact_id}", response_class=JSONResponse)
-async def delete_outbound_contact(
-    request: Request,
-    campaign_id: str,
-    contact_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Remove a single contact from a campaign. Requires dashboard auth."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import delete_contact_sync
-    ok = await asyncio.to_thread(delete_contact_sync, contact_id)
-    if not ok:
-        raise HTTPException(status_code=404, detail="Contact not found or delete failed")
-    return {"ok": True}
-
-
-@app.get("/outbound/campaigns/{campaign_id}/status", response_class=JSONResponse)
-async def get_outbound_campaign_status(
-    request: Request,
-    campaign_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Return campaign progress: contact counts grouped by status. Used for dashboard polling."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import get_campaign_progress_sync, get_campaign_sync
-    campaign = await asyncio.to_thread(get_campaign_sync, campaign_id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    progress = await asyncio.to_thread(get_campaign_progress_sync, campaign_id)
-    return {
-        "campaign_id": campaign_id,
-        "campaign_status": campaign.get("status", "draft"),
-        "progress": progress,
-    }
-
-
-@app.post("/outbound/campaigns/{campaign_id}/start", response_class=JSONResponse)
-async def start_outbound_campaign(
-    request: Request,
-    campaign_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Start dialing contacts in a campaign. Launches background task. Requires dashboard auth."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import get_campaign_sync, update_campaign_sync, run_campaign, reset_failed_to_pending_sync
-    campaign = await asyncio.to_thread(get_campaign_sync, campaign_id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    if campaign.get("status") == "running":
-        raise HTTPException(status_code=409, detail="Campaign is already running")
-    if campaign.get("status") == "completed":
-        await asyncio.to_thread(reset_failed_to_pending_sync, campaign_id)
-        campaign = await asyncio.to_thread(get_campaign_sync, campaign_id)
-    contacts = campaign.get("contacts") or []
-    pending = [c for c in contacts if c.get("status") == "pending"]
-    if not pending:
-        raise HTTPException(
-            status_code=400,
-            detail="No pending contacts to dial (retry resets failed contacts to pending)",
-        )
-    now_iso = datetime.now(timezone.utc).isoformat()
-    base_url = Config.OUTBOUND_BASE_URL or str(request.base_url).rstrip("/")
-    if not base_url or any(x in base_url.lower() for x in ("localhost", "127.0.0.1")):
-        raise HTTPException(
-            status_code=400,
-            detail="Outbound TwiML URL is not reachable by Twilio (localhost/127.0.0.1). Set OUTBOUND_BASE_URL in .env to your public URL (e.g. https://your-ngrok-subdomain.ngrok.io).",
-        )
-    await asyncio.to_thread(update_campaign_sync, campaign_id, {"status": "running", "started_at": now_iso})
-    asyncio.create_task(run_campaign(campaign_id, base_url))
-    return {"ok": True, "message": f"Campaign started with {len(pending)} pending contacts"}
-
-
-@app.post("/outbound/campaigns/{campaign_id}/contacts/{contact_id}/call", response_class=JSONResponse)
-async def call_single_outbound_contact(
-    request: Request,
-    campaign_id: str,
-    contact_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Dial a single contact manually. Does not change campaign status — just initiates one call."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import get_campaign_sync, get_contact_sync, update_contact_status_sync
-    campaign = await asyncio.to_thread(get_campaign_sync, campaign_id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    contact = await asyncio.to_thread(get_contact_sync, contact_id)
-    if not contact:
-        raise HTTPException(status_code=404, detail="Contact not found")
-    phone = (contact.get("phone") or "").strip()
-    if not phone:
-        raise HTTPException(status_code=400, detail="Contact has no phone number")
-    if contact.get("status") == "calling":
-        raise HTTPException(status_code=409, detail="Contact is already being called")
-    base_url = Config.OUTBOUND_BASE_URL or str(request.base_url).rstrip("/")
-    # Twilio must be able to reach the TwiML URL when the callee answers (localhost is not reachable)
-    if not base_url or any(x in base_url.lower() for x in ("localhost", "127.0.0.1")):
-        raise HTTPException(
-            status_code=400,
-            detail="Outbound TwiML URL is not reachable by Twilio (localhost/127.0.0.1). Set OUTBOUND_BASE_URL in .env to your public URL (e.g. https://your-ngrok-subdomain.ngrok.io).",
-        )
-    twiml_url = f"{base_url}/outbound-call-twiml/{campaign_id}?contact_id={quote(contact_id, safe='')}"
-    status_callback = f"{base_url}/outbound-call-status"
-    await asyncio.to_thread(update_contact_status_sync, contact_id, "calling")
-    try:
-        call = await TwilioService.create_outbound_call(
-            to=phone,
-            twiml_url=twiml_url,
-            status_callback=status_callback,
-        )
-        TwilioService.register_outbound_context(call.sid, campaign_id, contact_id)
-        await asyncio.to_thread(update_contact_status_sync, contact_id, "calling", call_sid=call.sid)
-        return {"ok": True, "call_sid": call.sid, "message": f"Calling {phone}"}
-    except Exception as e:
-        await asyncio.to_thread(update_contact_status_sync, contact_id, "failed", error=str(e)[:500])
-        raise HTTPException(status_code=502, detail=f"Dial failed: {e}")
-
-
-@app.post("/outbound/campaigns/{campaign_id}/contacts/{contact_id}/reset", response_class=JSONResponse)
-async def reset_outbound_contact(
-    request: Request,
-    campaign_id: str,
-    contact_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Reset a contact to pending so they can be called again. Use when stuck in 'calling' (e.g. after a failed attempt)."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import get_contact_sync, reset_contact_to_pending_sync
-    contact = await asyncio.to_thread(get_contact_sync, contact_id)
-    if not contact:
-        raise HTTPException(status_code=404, detail="Contact not found")
-    if contact.get("campaign_id") != campaign_id:
-        raise HTTPException(status_code=404, detail="Contact not in this campaign")
-    ok = await asyncio.to_thread(reset_contact_to_pending_sync, contact_id)
-    if not ok:
-        raise HTTPException(
-            status_code=400,
-            detail="Contact can only be reset when status is 'calling' or 'failed'",
-        )
-    return {"ok": True, "message": "Contact reset to pending; you can call again."}
-
-
-@app.post("/outbound/campaigns/{campaign_id}/contacts/{contact_id}/stop", response_class=JSONResponse)
-async def stop_outbound_contact(
-    request: Request,
-    campaign_id: str,
-    contact_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """End the active call for this contact (hang up). Contact must be in 'calling' state with a call_sid."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import get_contact_sync
-    contact = await asyncio.to_thread(get_contact_sync, contact_id)
-    if not contact:
-        raise HTTPException(status_code=404, detail="Contact not found")
-    if contact.get("campaign_id") != campaign_id:
-        raise HTTPException(status_code=404, detail="Contact not in this campaign")
-    if contact.get("status") != "calling":
-        raise HTTPException(status_code=400, detail="Contact is not on an active call (status is not 'calling')")
-    call_sid = (contact.get("call_sid") or "").strip()
-    if not call_sid:
-        raise HTTPException(status_code=400, detail="No active call SID for this contact")
-    await TwilioService.end_call_async(call_sid)
-    return {"ok": True, "message": "Call ended. Contact status will update when Twilio sends the callback."}
-
-
-@app.post("/outbound/campaigns/{campaign_id}/pause", response_class=JSONResponse)
-async def pause_outbound_campaign(
-    request: Request,
-    campaign_id: str,
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """Pause a running campaign. Contacts already being called will complete; remaining pending contacts are not dialed."""
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_outbound_enabled()
-    from services.outbound_service import get_campaign_sync, update_campaign_sync
-    campaign = await asyncio.to_thread(get_campaign_sync, campaign_id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    if campaign.get("status") != "running":
-        raise HTTPException(status_code=409, detail="Campaign is not currently running")
-    await asyncio.to_thread(update_campaign_sync, campaign_id, {"status": "paused"})
-    return {"ok": True, "message": "Campaign paused"}
-
-
-# ---------------------------------------------------------------------------
-# Missed calls: list recent missed inbound calls, callback with AI, mark handled
+# Missed calls: list recent missed inbound calls and mark handled
 # ---------------------------------------------------------------------------
 
 def _require_missed_calls_enabled():
@@ -980,76 +593,7 @@ async def list_missed_calls(
     return {
         "missed_calls": items,
         "count": len(items),
-        "twilio_number": Config.TWILIO_OUTBOUND_NUMBER or "",
     }
-
-
-@app.post("/missed-calls/{call_sid}/callback-ai", response_class=JSONResponse)
-async def missed_call_callback_ai(
-    request: Request,
-    call_sid: str,
-    body: dict = Body(default={}),
-    key: str | None = Query(None, alias="key"),
-    x_dashboard_key: str | None = Header(None, alias="X-Dashboard-Key"),
-):
-    """
-    Dial the missed caller back with the AI. Reuses the existing outbound
-    pipeline: ensures a singleton callback campaign, inserts a contact row
-    for this phone, then fires Twilio via TwilioService.create_outbound_call.
-    """
-    _require_dashboard_key(request=request, key=key, x_dashboard_key=x_dashboard_key)
-    _require_missed_calls_enabled()
-    if not Config.SUPABASE_URL or not Config.SUPABASE_KEY:
-        raise HTTPException(status_code=503, detail="Callback requires Supabase (reuses outbound campaign pipeline)")
-
-    phone = (body.get("phone") or "").strip()
-    if not phone:
-        raise HTTPException(status_code=400, detail="phone is required (the missed caller's number)")
-
-    base_url = Config.OUTBOUND_BASE_URL or str(request.base_url).rstrip("/")
-    if not base_url or any(x in base_url.lower() for x in ("localhost", "127.0.0.1")):
-        raise HTTPException(
-            status_code=400,
-            detail="Outbound TwiML URL is not reachable by Twilio (localhost/127.0.0.1). Set OUTBOUND_BASE_URL in .env to your public URL.",
-        )
-
-    from services.missed_calls_service import (
-        get_or_create_callback_campaign_sync,
-        add_callback_contact_sync,
-    )
-    from services.outbound_service import update_contact_status_sync
-
-    campaign = await asyncio.to_thread(get_or_create_callback_campaign_sync)
-    if not campaign or not campaign.get("id"):
-        raise HTTPException(status_code=500, detail="Failed to prepare missed-call callback campaign")
-    campaign_id = campaign["id"]
-
-    contact = await asyncio.to_thread(add_callback_contact_sync, campaign_id, call_sid, phone)
-    if not contact or not contact.get("id"):
-        raise HTTPException(status_code=500, detail="Failed to create callback contact")
-    contact_id = contact["id"]
-
-    twiml_url = f"{base_url}/outbound-call-twiml/{campaign_id}?contact_id={quote(contact_id, safe='')}"
-    status_callback = f"{base_url}/outbound-call-status"
-    await asyncio.to_thread(update_contact_status_sync, contact_id, "calling")
-    try:
-        call = await TwilioService.create_outbound_call(
-            to=phone,
-            twiml_url=twiml_url,
-            status_callback=status_callback,
-        )
-        TwilioService.register_outbound_context(call.sid, campaign_id, contact_id)
-        await asyncio.to_thread(update_contact_status_sync, contact_id, "calling", call_sid=call.sid)
-        return {
-            "ok": True,
-            "call_sid": call.sid,
-            "campaign_id": campaign_id,
-            "contact_id": contact_id,
-            "message": f"Calling {phone} with AI",
-        }
-    except Exception as e:
-        await asyncio.to_thread(update_contact_status_sync, contact_id, "failed", error=str(e)[:500])
-        raise HTTPException(status_code=502, detail=f"Dial failed: {e}")
 
 
 @app.post("/missed-calls/{call_sid}/handled", response_class=JSONResponse)
@@ -1254,13 +798,9 @@ async def handle_media_stream(websocket: WebSocket):
     connection_manager.state.session_updated_event = asyncio.Event()
     # Parse legacy query params. New TwiML uses Twilio Stream <Parameter> values,
     # which arrive later in start.customParameters.
-    outbound_system_message: str | None = None
     try:
         qs = parse_qs(websocket.scope.get("query_string", b"").decode())
         caller_number = (qs.get("caller_number") or [None])[0]
-        direction = (qs.get("direction") or ["inbound"])[0]
-        campaign_id = (qs.get("campaign_id") or [None])[0]
-        contact_id = (qs.get("contact_id") or [None])[0]
 
         if caller_number:
             connection_manager.state.caller_phone_number = caller_number
@@ -1268,27 +808,11 @@ async def handle_media_stream(websocket: WebSocket):
                 "incoming_caller_number": caller_number,
                 "source": "legacy media-stream query (caller_number)",
             })
-
-        if direction == "outbound" and campaign_id and contact_id:
-            connection_manager.state.is_outbound_call = True
-            Log.event("Outbound call stream connected", {
-                "campaign_id": campaign_id,
-                "contact_id": contact_id,
-            })
-            from services.outbound_service import build_outbound_system_message, get_contact_sync
-            outbound_system_message = await asyncio.to_thread(
-                build_outbound_system_message, campaign_id, contact_id
-            )
-            if not outbound_system_message:
-                Log.info("Outbound system message could not be built; falling back to default")
-            contact = await asyncio.to_thread(get_contact_sync, contact_id)
-            if contact and (contact.get("phone") or "").strip():
-                connection_manager.state.caller_phone_number = (contact.get("phone") or "").strip()
     except Exception:
         pass
     # Defer session init when context was not available up front so start.customParameters
-    # or the CallSid cache can decide inbound caller/outbound prompt context.
-    defer_session_init = (outbound_system_message is None) and (not caller_number)
+    # can provide the caller number before the initial greeting.
+    defer_session_init = not caller_number
     openai_service = OpenAIService()
     audio_service = AudioService()
     
@@ -1296,7 +820,7 @@ async def handle_media_stream(websocket: WebSocket):
         await connection_manager.connect_to_openai()
         if not defer_session_init:
             connection_manager.state.session_updated_event.clear()
-            await openai_service.initialize_session(connection_manager, system_message_override=outbound_system_message)
+            await openai_service.initialize_session(connection_manager)
 
         # Define event handlers for cleaner separation of concerns
         async def handle_media_event(data: dict) -> None:
@@ -1308,48 +832,18 @@ async def handle_media_stream(websocket: WebSocket):
 
         async def handle_stream_start(stream_sid: str) -> None:
             """Handle stream start: we now have stream_sid so audio can be sent to Twilio. Trigger AI greeting."""
-            nonlocal outbound_system_message
             Log.event("Twilio stream started", {"streamSid": stream_sid})
             if defer_session_init:
-                call_sid = getattr(connection_manager.state, "call_sid", None)
-                outbound_ctx = None
-                outbound_ctx_source = "none"
-                custom_campaign_id = getattr(connection_manager.state, "outbound_campaign_id", None)
-                custom_contact_id = getattr(connection_manager.state, "outbound_contact_id", None)
-                if custom_campaign_id and custom_contact_id:
-                    outbound_ctx = (custom_campaign_id, custom_contact_id)
-                    outbound_ctx_source = "twilio customParameters"
-                elif call_sid:
-                    outbound_ctx = TwilioService.get_outbound_context(call_sid)
-                    outbound_ctx_source = "CallSid cache" if outbound_ctx else "none"
-                if outbound_ctx:
-                    ob_campaign_id, ob_contact_id = outbound_ctx
-                    connection_manager.state.is_outbound_call = True  # so send_initial_greeting uses minimal item even if build fails
-                    Log.event("Outbound call stream context", {
-                        "campaign_id": ob_campaign_id,
-                        "contact_id": ob_contact_id,
-                        "source": outbound_ctx_source,
-                    })
-                    from services.outbound_service import build_outbound_system_message, get_contact_sync
-                    outbound_system_message = await asyncio.to_thread(build_outbound_system_message, ob_campaign_id, ob_contact_id)
-                    if not outbound_system_message:
-                        Log.info("Outbound system message could not be built; falling back to default")
-                    contact = await asyncio.to_thread(get_contact_sync, ob_contact_id)
-                    if contact and (contact.get("phone") or "").strip():
-                        connection_manager.state.caller_phone_number = (contact.get("phone") or "").strip()
                 connection_manager.state.session_updated_event.clear()
-                await openai_service.initialize_session(connection_manager, system_message_override=outbound_system_message)
-                if not outbound_ctx:
-                    await openai_service.send_caller_phone_session_update(connection_manager)
+                await openai_service.initialize_session(connection_manager)
+                await openai_service.send_caller_phone_session_update(connection_manager)
             else:
                 await openai_service.send_caller_phone_session_update(connection_manager)
             try:
                 await asyncio.wait_for(connection_manager.state.session_updated_event.wait(), timeout=5.0)
             except asyncio.TimeoutError:
                 Log.info("session.updated not received within 5s; proceeding with initial greeting")
-            # Outbound: use minimal "begin now" item so first response follows session (campaign) instructions, not inbound greeting
-            is_outbound = outbound_system_message is not None or connection_manager.state.is_outbound_call
-            await openai_service.send_initial_greeting(connection_manager, is_outbound=is_outbound)
+            await openai_service.send_initial_greeting(connection_manager)
             # Pre-warm availability cache so first get_availability in this call is instant
             openai_service.prewarm_availability_cache()
             # Start call recording if enabled (fire-and-forget)
@@ -1370,7 +864,7 @@ async def handle_media_stream(websocket: WebSocket):
             if audio_data and connection_manager.state.stream_sid:
                 # If we're in a goodbye flow, mark that farewell audio has started and capture its item_id
                 if openai_service.is_goodbye_pending():
-                    openai_service.mark_goodbye_audio_heard(audio_data.get('item_id'), connection_manager)
+                    openai_service.mark_goodbye_audio_heard(audio_data.get('item_id'), connection_manager, audio_service)
                 audio_message = audio_service.process_outgoing_audio(
                     response, 
                     connection_manager.state.stream_sid
@@ -1448,7 +942,7 @@ async def handle_media_stream(websocket: WebSocket):
                 openai_service.clear_assistant_audio_suppression()
             # If a goodbye was queued and we've heard its audio, finalize after the response completes
             if openai_service.should_finalize_on_event(response):
-                await openai_service.finalize_goodbye(connection_manager)
+                await openai_service.finalize_goodbye(connection_manager, audio_service)
 
         # Run Twilio receiver and OpenAI receiver; plus a renewal loop for OpenAI session
         async def openai_receiver():
@@ -1464,7 +958,7 @@ async def handle_media_stream(websocket: WebSocket):
                     print("Preemptive OpenAI session renewal starting…")
                     await connection_manager.close_openai_connection()
                     await connection_manager.connect_to_openai()
-                    await openai_service.initialize_session(connection_manager, system_message_override=outbound_system_message)
+                    await openai_service.initialize_session(connection_manager)
                     print("OpenAI session renewed.")
                 except Exception as e:
                     print(f"OpenAI session renewal failed: {e}")

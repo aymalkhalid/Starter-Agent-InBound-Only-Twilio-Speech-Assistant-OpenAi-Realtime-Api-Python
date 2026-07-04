@@ -26,6 +26,19 @@ Follows the [OpenAI Realtime guide](./references/openai-realtime-models-promptin
 
 VAD settings (`VAD_MODE`, `VAD_THRESHOLD`, etc.) reduce spurious turns from noise but do not replace `wait_for_user`. See [Configuration](./CONFIGURATION.md#voice-activity-detection-vad).
 
+### `end_call` (goodbye and hangup)
+
+The model calls `end_call` only when the caller clearly ends the conversation. The server does not hang up immediately:
+
+1. Builds a context-aware farewell from call state (appointment booked, urgent priority, call record saved, or default).
+2. Returns the tool output silently with `trigger_response=False`.
+3. Sends a separate tagged `response.create` for the farewell audio.
+4. Waits for the full farewell `response.done`.
+5. Waits for Twilio mark callbacks to confirm buffered farewell audio has played, then applies `END_CALL_TAIL_SECONDS`.
+6. Completes the Twilio call by REST when credentials exist and closes the Twilio WebSocket as fallback.
+
+If farewell audio or `response.done` stalls, `END_CALL_WATCHDOG_SECONDS` finalizes the call. See [Configuration](./CONFIGURATION.md#end-call-goodbye-timing).
+
 ## Conditional tools
 
 | Tool | When available |
@@ -53,4 +66,4 @@ Slow or external tools include **preamble sample phrases** in their descriptions
 
 Exact values matter for booking and records: use ISO slot times from `get_availability`, confirm phone/email before writes, and recover from failures without repeating identical failed calls.
 
-Future external tools register through `services/tool_registry.py` and load via `services/mcp_adapter.py` (disabled no-op in v1). See [Diagrams §23](./DIAGRAMS.md#23-external-tools-scaffold-mcp--tool-registry).
+Future external tools register through `services/tool_registry.py` and load via `services/mcp_adapter.py` (disabled no-op in v1). See [Diagrams §3](./DIAGRAMS.md#3-tool-layer).

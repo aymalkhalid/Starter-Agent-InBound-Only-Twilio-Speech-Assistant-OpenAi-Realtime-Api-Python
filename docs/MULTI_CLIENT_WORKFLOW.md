@@ -87,7 +87,7 @@ Summary questions:
 | Primary goal | Intake? Qualify leads? Book showings? Answer FAQs? Transfer hot leads? |
 | Required data fields | Name, phone, budget, timeline, property type, etc. |
 | Integrations | Supabase dashboard, Google Calendar, CRM webhook, live transfer |
-| Voice / language | `VOICE`, `ASSISTANT_ACCENT`, `LANGUAGE_SWITCH_POLICY` |
+| Voice / delivery / language | `VOICE`, `ASSISTANT_TONE`, `ASSISTANT_WARMTH`, `ASSISTANT_EXPRESSIVENESS`, `ASSISTANT_PACING`, `ASSISTANT_ACCENT`, `LANGUAGE_SWITCH_POLICY` |
 | Success criteria | What makes a "good" call? What gets saved? |
 
 Map answers to starter capabilities:
@@ -97,7 +97,6 @@ Map answers to starter capabilities:
 | Lead capture / qualification | Prompt + `save_call_record` (no code change for basic fields) |
 | Appointment booking | `BOOKING_ENABLED=true` + `GOOGLE_CALENDAR_ID` + credentials |
 | Human escalation | `HUMAN_TRANSFER_URL` + `HUMAN_TRANSFER_DIAL_NUMBER` + Twilio creds |
-| Outbound calling | `OUTBOUND_ENABLED=true` + Twilio + Supabase + `OUTBOUND_BASE_URL` |
 | New CRM fields or APIs | Extend `save_call_record` in `services/openai_service.py` |
 
 ---
@@ -135,7 +134,6 @@ SYSTEM_INSTRUCTIONS_PATH=prompts/main_system_instructions.md
 | CRM webhook | `CALL_RECORD_BACKEND=webhook`, `WEBHOOK_URL` (optional `WEBHOOK_SECRET`) | Registers `save_call_record`; POSTs payload on save |
 | Showings / appointments | `BOOKING_ENABLED=true`, `GOOGLE_CALENDAR_ID`, `GOOGLE_CALENDAR_CREDENTIALS_JSON` | Registers all 5 booking tools only when calendar creds load |
 | Transfer to agent | `HUMAN_TRANSFER_URL` (e.g. `{HOST}/twiml/transfer-to-agent`), `HUMAN_TRANSFER_DIAL_NUMBER`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`; set `HUMAN_TRANSFER_ENABLED=false` to disable | Registers `request_human_handoff` when URL is set |
-| Outbound lead dialer | `OUTBOUND_ENABLED=true`, Twilio creds, Supabase, `OUTBOUND_BASE_URL` | Campaign APIs in dashboard; separate from inbound prompt |
 
 **Important:** `save_call_record` is **not** available with the default `.env.example` alone — `CALL_RECORD_BACKEND=webhook` requires a non-empty `WEBHOOK_URL`, or use Supabase. Without a configured backend, the agent can still talk but cannot persist leads.
 
@@ -145,7 +143,7 @@ SYSTEM_INSTRUCTIONS_PATH=prompts/main_system_instructions.md
 
 Edit `prompts/main_system_instructions.md` (or a client copy via `SYSTEM_INSTRUCTIONS_PATH`).
 
-If you use a separate prompt file, **copy the full starter file first** — it must keep all nine placeholders (`{agent_name}`, `{company_name}`, `{language_instruction}`, etc.) or `config.py` rendering will break. See `system_instructions.py` → `REQUIRED_PROMPT_PLACEHOLDERS`.
+If you use a separate prompt file, **copy the full starter file first** — it must keep all required placeholders (`{agent_name}`, `{company_name}`, `{delivery_instruction}`, `{language_instruction}`, etc.) or `config.py` rendering will break. See `system_instructions.py` → `REQUIRED_PROMPT_PLACEHOLDERS`.
 
 **Edit order** (matches [Starter prompt mapping](./references/STARTER_PROMPT_MAPPING.md)):
 
@@ -174,7 +172,7 @@ In a **client repo**, you may need to relax tests that assert `"generic business
 | --- | --- |
 | Spoken business + agent name | `.env`: `COMPANY_NAME`, `AGENT_NAME` |
 | Custom opening line | `.env`: `WELCOME_MESSAGE` or `GREETING` (supports `{company_name}`, `{agent_name}`) |
-| Voice, accent, reasoning | `.env`: `VOICE`, `ASSISTANT_*`, `REALTIME_REASONING_EFFORT` |
+| Voice, delivery, accent, reasoning | `.env`: `VOICE`, `ASSISTANT_*`, `REALTIME_REASONING_EFFORT` |
 | Farewell wording | `system_instructions.py` → `get_farewell_instruction()` — only if env defaults are not enough |
 
 ---
@@ -198,12 +196,12 @@ Rule from [AGENTS.md](../AGENTS.md): behavior in prompt first; side effects in P
 ### Step 7 — Deploy and wire Twilio
 
 1. Run locally: `python main.py` (default port `5050`) + `ngrok http 5050` for first test call
-2. Set `RECORDING_STATUS_CALLBACK_BASE_URL` and `OUTBOUND_BASE_URL` to your public host when those features are enabled
+2. Set `RECORDING_STATUS_CALLBACK_BASE_URL` to your public host when call recording is enabled
 3. Production: `./scripts/deploy-cloudrun.sh` ([Cloud Run Deploy](./DEPLOY_CLOUD_RUN.md))
 4. Point **this client's Twilio number** Voice webhook to `{SERVICE_URL}/incoming-call`
 5. Place 3–5 test calls; review dashboard or webhook payloads
 
-Each client gets its **own** Cloud Run service, `.env`, and Twilio number. Inbound audio works with `OPENAI_API_KEY` alone; Twilio REST creds are needed for reliable hangup, recording, transfer, and outbound.
+Each client gets its **own** Cloud Run service, `.env`, and Twilio number. Inbound audio works with `OPENAI_API_KEY` alone; Twilio REST creds are needed for reliable hangup, recording, transfer, and missed-call lookup.
 
 ---
 
@@ -237,7 +235,7 @@ Each client gets its **own** Cloud Run service, `.env`, and Twilio number. Inbou
 | --- | --- |
 | Prompt | Fixed qualification flow (3–6 questions); define hot/warm/cold in `# Conversation Flow`; instruct when to transfer vs save-only |
 | `.env` | `AGENT_LABEL=leadco_qualifier`; webhook to CRM; optional `HUMAN_TRANSFER_*` for qualified leads |
-| Tools | Heavy use of `save_call_record` with `priority` + detailed `call_summary`; optional outbound campaigns |
+| Tools | Heavy use of `save_call_record` with `priority` + detailed `call_summary` |
 | Booking | Usually off |
 
 ### Other use cases
@@ -356,7 +354,7 @@ Review first 10 Supabase records. Common prompt fixes: tool called too early, sl
 
 ```text
 ~/voice-agents/
-  Twilio-speech-assistant-openai-realtime-api-python/   # starter (upstream)
+  Starter-Agent-InBound-Only-Twilio-Speech-Assistant-OpenAi-Realtime-Api-Python/   # starter (upstream)
   clients/
     acme-realestate/
       prompts/main_system_instructions.md   # or prompts/acme_realestate.md

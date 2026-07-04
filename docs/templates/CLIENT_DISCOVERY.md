@@ -15,7 +15,7 @@ Copy this into a doc or ticket per client **before** cloning the starter. Fill e
 | Company name (spoken) | |
 | Agent name (spoken) | |
 | Industry / use case (e.g. real estate, lead qualifier, dental intake) | |
-| Inbound, outbound, or both? | |
+| Inbound call type (support, intake, booking, triage, etc.) | |
 | Who calls? (customers, leads, patients, tenants, etc.) | |
 
 ---
@@ -29,7 +29,6 @@ Check all that apply and add notes:
 - [ ] Qualify leads (hot / warm / cold)
 - [ ] Book appointments / showings
 - [ ] Transfer hot leads to a human
-- [ ] Outbound campaign (dial list)
 - [ ] Other: ___________________
 
 **Primary success metric:** What makes this call a win? (e.g. "qualified lead saved with budget + timeline", "showing booked", "FAQ answered in under 2 min")
@@ -91,7 +90,7 @@ Check what this client needs:
 | Google Calendar booking | | `BOOKING_ENABLED` + calendar creds |
 | Live transfer to human | | `HUMAN_TRANSFER_URL` + dial number + Twilio creds |
 | Call recording + transcript | | `CALL_RECORDING_ENABLED` + public callback URL |
-| Outbound campaigns | | `OUTBOUND_ENABLED` + Twilio + Supabase + `OUTBOUND_BASE_URL` |
+| Missed-call list | | Twilio creds + `TWILIO_PHONE_NUMBER` |
 | CRM / webhook URL | | |
 | Custom API (MLS, CRM lookup) | | Needs new tool in `openai_service.py` |
 

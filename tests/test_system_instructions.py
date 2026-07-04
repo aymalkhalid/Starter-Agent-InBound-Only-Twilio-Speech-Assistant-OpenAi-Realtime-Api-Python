@@ -16,6 +16,7 @@ from system_instructions import (
 _PROMPT_KWARGS = {
     "company_name": "Example Co",
     "agent_name": "Alex",
+    "delivery_instruction": "# Delivery Style\nTarget tone: warm professional.",
     "language_instruction": "# Language\nUse English.",
     "accent_instruction": "# Accent\nUse clear phone speech.",
     "reasoning_effort_instruction": "## Reasoning effort\nSession API reasoning effort is `low`.",
@@ -158,6 +159,19 @@ def test_build_accent_instruction_keeps_language_separate():
     assert "Do not change response language based on the caller's accent." in text
 
 
+def test_build_delivery_instruction_controls_humane_voice():
+    from config import _build_delivery_instruction
+
+    text = _build_delivery_instruction("calm helpful", "very_warm", "expressive", "relaxed")
+    assert "# Delivery Style" in text
+    assert "Target tone: calm helpful." in text
+    assert "helpful human on a phone call" in text
+    assert "more care and reassurance" in text
+    assert "more upbeat energy" in text
+    assert "speak slightly slower" in text
+    assert "Do not mention these delivery controls to the caller." in text
+
+
 def test_rebuild_system_message_pins_english_by_default(monkeypatch):
     monkeypatch.setattr(Config, "ASSISTANT_LANGUAGE", "English")
     monkeypatch.setattr(Config, "LANGUAGE_SWITCH_POLICY", "default_only")
@@ -189,6 +203,17 @@ def test_rebuild_system_message_includes_reasoning_effort_for_realtime_2(monkeyp
     rebuild_system_message()
     assert "Session API reasoning effort is `low`" in Config.SYSTEM_MESSAGE
     assert "respond quickly and do not reason" in Config.SYSTEM_MESSAGE.lower()
+
+
+def test_rebuild_system_message_includes_delivery_style(monkeypatch):
+    monkeypatch.setattr(Config, "ASSISTANT_TONE", "calm professional")
+    monkeypatch.setattr(Config, "ASSISTANT_WARMTH", "warm")
+    monkeypatch.setattr(Config, "ASSISTANT_EXPRESSIVENESS", "balanced")
+    monkeypatch.setattr(Config, "ASSISTANT_PACING", "moderate")
+    rebuild_system_message()
+    assert "# Delivery Style" in Config.SYSTEM_MESSAGE
+    assert "Target tone: calm professional." in Config.SYSTEM_MESSAGE
+    assert "varied sentence rhythm" in Config.SYSTEM_MESSAGE
 
 
 def test_slow_tool_descriptions_include_preamble_sample_phrases(monkeypatch):

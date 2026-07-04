@@ -49,21 +49,6 @@ def test_incoming_twiml_uses_custom_parameter_for_caller_number():
     assert 'name="caller_number" value="+15551234567"' in xml
 
 
-def test_outbound_twiml_uses_custom_parameters():
-    response = TwilioService.create_outbound_stream_response(
-        "example.com",
-        campaign_id="campaign-123",
-        contact_id="contact-456",
-    )
-    xml = response.body.decode("utf-8")
-
-    assert 'url="wss://example.com/media-stream"' in xml
-    assert "?direction=outbound" not in xml
-    assert 'name="direction" value="outbound"' in xml
-    assert 'name="campaign_id" value="campaign-123"' in xml
-    assert 'name="contact_id" value="contact-456"' in xml
-
-
 class _FakeTwilioWebSocket:
     def __init__(self, messages: list[dict]):
         self._messages = messages
@@ -84,9 +69,6 @@ def test_stream_start_custom_parameters_hydrate_connection_state():
                         "callSid": "CA123",
                         "customParameters": {
                             "caller_number": "+15551234567",
-                            "direction": "outbound",
-                            "campaign_id": "campaign-123",
-                            "contact_id": "contact-456",
                         },
                     },
                 }
@@ -116,9 +98,6 @@ def test_stream_start_custom_parameters_hydrate_connection_state():
     assert manager.state.stream_sid == "MZ123"
     assert manager.state.call_sid == "CA123"
     assert manager.state.caller_phone_number == "+15551234567"
-    assert manager.state.is_outbound_call is True
-    assert manager.state.outbound_campaign_id == "campaign-123"
-    assert manager.state.outbound_contact_id == "contact-456"
 
 
 def test_realtime_websocket_url_uses_model_only(monkeypatch):

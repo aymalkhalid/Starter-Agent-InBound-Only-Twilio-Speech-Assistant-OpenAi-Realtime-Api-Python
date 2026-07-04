@@ -1417,44 +1417,7 @@
       }
     }
 
-    /* Outbound calls button */
-    .dashboard-header .btn-outbound {
-      font-family: inherit;
-      background: #059669;
-      color: #fff;
-      border: none;
-      min-height: 2.75rem;
-      min-width: 2.75rem;
-      padding: 0.5rem 1.15rem;
-      border-radius: 10px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
-      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-    }
-
-    .dashboard-header .btn-outbound:hover {
-      background: #047857;
-      box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
-      transform: translateY(-2px);
-    }
-
-    .dashboard-header .btn-outbound:active {
-      transform: translateY(0);
-    }
-
-    .dashboard-header .btn-outbound .icon {
-      width: 1.1em;
-      height: 1.1em;
-      opacity: 0.9;
-    }
-
-    /* Missed calls button (matches outbound button sizing; red accent + badge) */
+    /* Missed calls button */
     .dashboard-header .btn-missed-calls {
       font-family: inherit;
       background: #dc2626;
@@ -1511,7 +1474,7 @@
       display: inline-flex;
     }
 
-    /* Missed calls modal — near-fullscreen, reuses outbound-modal layout */
+    /* Missed calls modal — near-fullscreen, reuses wide-modal layout */
     .missed-modal .modal {
       max-width: min(1200px, 96vw);
       width: 96vw;
@@ -1607,21 +1570,6 @@
       gap: 0.25rem;
     }
 
-    .mc-actions .mc-btn-ai {
-      background: #059669;
-      color: #fff;
-      border-color: #059669;
-    }
-
-    .mc-actions .mc-btn-ai:hover:not(:disabled) {
-      background: #047857;
-    }
-
-    .mc-actions .mc-btn-ai:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
     .mc-actions .mc-btn-tel {
       background: #0ea5e9;
       color: #fff;
@@ -1640,387 +1588,6 @@
       text-align: center;
       padding: 2rem 1rem;
       color: var(--muted);
-    }
-
-    /* Outbound modal — near-fullscreen */
-    .outbound-modal .modal {
-      max-width: min(1400px, 96vw);
-      width: 96vw;
-      max-height: 96vh;
-      height: 96vh;
-      display: flex;
-      flex-direction: column;
-      border-radius: 14px;
-      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
-    }
-
-    .outbound-modal .modal-header {
-      padding: 1.25rem 1.5rem;
-      background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
-      border-bottom: 1px solid var(--border);
-      border-radius: 14px 14px 0 0;
-    }
-
-    .outbound-modal .modal-header h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text);
-      letter-spacing: -0.02em;
-    }
-
-    .outbound-modal .modal-close {
-      width: 36px;
-      height: 36px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: none;
-      border: none;
-      font-size: 1.4rem;
-      color: var(--muted);
-      cursor: pointer;
-      border-radius: 8px;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .outbound-modal .modal-close:hover {
-      background: var(--border);
-      color: var(--text);
-    }
-
-    .outbound-modal .modal-body {
-      flex: 1;
-      overflow-y: auto;
-      min-height: 0;
-      padding: 1.25rem 1.5rem;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .outbound-modal .modal-footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 0.75rem;
-      flex-shrink: 0;
-      background: #fafbfc;
-      border-radius: 0 0 14px 14px;
-    }
-
-    .outbound-modal .modal-footer .status {
-      margin-right: auto;
-      font-size: 0.875rem;
-      color: var(--muted);
-    }
-
-    .outbound-modal .modal-footer .status.success {
-      color: var(--priority-low);
-      font-weight: 500;
-    }
-
-    .outbound-modal .modal-footer .status.error {
-      color: var(--priority-high);
-      font-weight: 500;
-    }
-
-    /* Outbound: campaign list view */
-    .ob-campaign-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .ob-campaign-list li {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    .ob-campaign-list li:hover {
-      background: var(--accent-soft);
-    }
-
-    .ob-campaign-list .ob-c-name {
-      font-weight: 600;
-      flex: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .ob-campaign-list .ob-c-type {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .ob-badge {
-      display: inline-block;
-      padding: 0.15rem 0.55rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: capitalize;
-    }
-
-    .ob-badge.draft {
-      background: #e2e8f0;
-      color: #475569;
-    }
-
-    .ob-badge.running {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .ob-badge.paused {
-      background: #fef9c3;
-      color: #854d0e;
-    }
-
-    .ob-badge.completed {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-
-    /* Outbound: campaign editor two-panel layout */
-    .ob-editor {
-      display: grid;
-      grid-template-columns: 1fr 1.6fr;
-      gap: 1.5rem;
-      min-height: 0;
-      flex: 1;
-    }
-
-    @media (max-width: 700px) {
-      .ob-editor {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .ob-editor .ob-config {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      min-height: 0;
-      height: 100%;
-    }
-
-    .ob-editor .ob-config label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--muted);
-      display: block;
-      margin-bottom: 0.2rem;
-    }
-
-    .ob-editor .ob-config input,
-    .ob-editor .ob-config select,
-    .ob-editor .ob-config textarea {
-      font-family: inherit;
-      width: 100%;
-      padding: 0.5rem 0.6rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.875rem;
-      background: var(--surface);
-      color: var(--text);
-    }
-
-    .ob-editor .ob-config textarea {
-      min-height: 160px;
-      resize: vertical;
-      flex: 1;
-    }
-
-    /* Outbound: contact spreadsheet */
-    .ob-contacts-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      min-height: 0;
-      flex: 1;
-    }
-
-    .ob-contacts-panel .ob-contacts-toolbar {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .ob-contacts-panel .ob-contacts-toolbar button,
-    .ob-contacts-panel .ob-contacts-toolbar label {
-      font-family: inherit;
-      font-size: 0.8rem;
-      padding: 0.35rem 0.75rem;
-      border-radius: 8px;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-weight: 500;
-      transition: background 0.15s;
-    }
-
-    .ob-contacts-panel .ob-contacts-toolbar button:hover {
-      background: var(--accent-soft);
-    }
-
-    .ob-contacts-panel .ob-contacts-toolbar .ob-file-label {
-      background: #059669;
-      color: #fff;
-      border-color: #059669;
-    }
-
-    .ob-contacts-panel .ob-contacts-toolbar .ob-file-label:hover {
-      background: #047857;
-    }
-
-    .ob-contacts-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.8rem;
-    }
-
-    .ob-contacts-table th {
-      text-align: left;
-      padding: 0.4rem 0.5rem;
-      color: var(--muted);
-      font-weight: 600;
-      border-bottom: 2px solid var(--border);
-      font-size: 0.75rem;
-    }
-
-    .ob-contacts-table td {
-      padding: 0.3rem 0.4rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .ob-contacts-table input {
-      width: 100%;
-      border: 1px solid transparent;
-      background: transparent;
-      padding: 0.3rem 0.4rem;
-      font-size: 0.8rem;
-      font-family: inherit;
-      border-radius: 4px;
-    }
-
-    .ob-contacts-table input:focus {
-      border-color: var(--accent);
-      outline: none;
-      background: #fff;
-    }
-
-    .ob-contacts-table .ob-del-btn {
-      background: none;
-      border: none;
-      color: var(--priority-high);
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 0.2rem;
-      opacity: 0.5;
-    }
-
-    .ob-contacts-table .ob-del-btn:hover {
-      opacity: 1;
-    }
-
-    .ob-contacts-table .ob-call-btn {
-      background: #059669;
-      color: #fff;
-      border: none;
-      padding: 0.25rem 0.6rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
-
-    .ob-contacts-table .ob-call-btn:hover {
-      background: #047857;
-    }
-
-    .ob-contacts-table .ob-call-btn:disabled {
-      background: #94a3b8;
-      cursor: not-allowed;
-    }
-    .ob-contacts-table .ob-reset-btn {
-      background: #b45309;
-      color: #fff;
-      border: none;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      cursor: pointer;
-      margin-left: 0.25rem;
-    }
-    .ob-contacts-table .ob-reset-btn:hover {
-      background: #92400e;
-    }
-    .ob-contacts-table tr.ob-row-calling {
-      background: #fef3c7;
-      box-shadow: inset 0 0 0 2px #f59e0b;
-    }
-    .ob-contacts-table tr.ob-row-calling td {
-      border-color: #fcd34d;
-    }
-    .ob-contacts-table .ob-stop-btn {
-      background: #dc2626;
-      color: #fff;
-      border: none;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      cursor: pointer;
-      margin-left: 0.25rem;
-    }
-    .ob-contacts-table .ob-stop-btn:hover {
-      background: #b91c1c;
-    }
-
-    .ob-contacts-wrap {
-      max-height: none;
-      flex: 1;
-      overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-
-    /* Outbound: progress bar */
-    .ob-progress {
-      margin-top: 0.5rem;
-    }
-
-    .ob-progress-bar {
-      height: 8px;
-      border-radius: 4px;
-      background: #e2e8f0;
-      overflow: hidden;
-    }
-
-    .ob-progress-fill {
-      height: 100%;
-      border-radius: 4px;
-      background: #059669;
-      transition: width 0.5s;
-    }
-
-    .ob-progress-text {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-top: 0.25rem;
     }
   </style>
 </head>
@@ -2052,16 +1619,6 @@
             </svg>
             Missed calls
             <span class="badge" id="missed-calls-badge">0</span>
-          </button>
-          <button type="button" id="outbound-btn" class="btn-outbound" aria-label="Outbound calls">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path
-                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-              <polyline points="15 3 21 3 21 9" />
-              <line x1="14" y1="10" x2="21" y2="3" />
-            </svg>
-            Outbound
           </button>
           <button type="button" id="settings-btn" class="btn-settings" aria-label="Open app settings">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -2250,6 +1807,26 @@
                   <option value="marin">marin</option>
                   <option value="cedar">cedar</option>
                 </select></div>
+              <div class="field"><label for="setting-ASSISTANT_TONE">Tone</label><input type="text"
+                  id="setting-ASSISTANT_TONE" name="ASSISTANT_TONE" placeholder="warm professional" /></div>
+              <div class="field"><label for="setting-ASSISTANT_WARMTH">Warmth</label><select
+                  id="setting-ASSISTANT_WARMTH" name="ASSISTANT_WARMTH">
+                  <option value="neutral">neutral</option>
+                  <option value="warm">warm</option>
+                  <option value="very_warm">very warm</option>
+                </select></div>
+              <div class="field"><label for="setting-ASSISTANT_EXPRESSIVENESS">Expressiveness</label><select
+                  id="setting-ASSISTANT_EXPRESSIVENESS" name="ASSISTANT_EXPRESSIVENESS">
+                  <option value="reserved">reserved</option>
+                  <option value="balanced">balanced</option>
+                  <option value="expressive">expressive</option>
+                </select></div>
+              <div class="field"><label for="setting-ASSISTANT_PACING">Pacing</label><select
+                  id="setting-ASSISTANT_PACING" name="ASSISTANT_PACING">
+                  <option value="relaxed">relaxed</option>
+                  <option value="moderate">moderate</option>
+                  <option value="brisk">brisk</option>
+                </select></div>
               <div class="field"><label for="setting-ASSISTANT_LANGUAGE">Default language</label><input type="text"
                   id="setting-ASSISTANT_LANGUAGE" name="ASSISTANT_LANGUAGE" placeholder="English" /></div>
               <div class="field"><label for="setting-LANGUAGE_SWITCH_POLICY">Language switching</label><select
@@ -2344,96 +1921,8 @@
       </div>
     </div>
 
-    <!-- Outbound campaign modal -->
-    <div class="modal-overlay outbound-modal" id="outbound-modal" role="dialog" aria-modal="true"
-      aria-labelledby="outbound-modal-title">
-      <div class="modal">
-        <div class="modal-header">
-          <h2 id="outbound-modal-title">Outbound Campaigns</h2>
-          <button type="button" class="modal-close" id="outbound-modal-close" aria-label="Close">&times;</button>
-        </div>
-        <div class="modal-body" id="outbound-modal-body">
-          <!-- Campaign list view (shown first) -->
-          <div id="ob-list-view">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-              <span id="ob-list-status" class="status">Loading…</span>
-              <button type="button" id="ob-new-campaign-btn"
-                style="background:#059669;color:#fff;border:none;padding:0.45rem 1rem;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;">+
-                New Campaign</button>
-            </div>
-            <ul class="ob-campaign-list" id="ob-campaign-list"></ul>
-          </div>
-          <!-- Campaign editor view (hidden until create/click) -->
-          <div id="ob-editor-view" style="display:none;flex:1;flex-direction:column;">
-            <div style="margin-bottom:0.75rem;">
-              <button type="button" id="ob-back-to-list"
-                style="background:none;border:none;color:var(--accent);font-weight:600;cursor:pointer;font-size:0.85rem;">&larr;
-                Back to campaigns</button>
-            </div>
-            <div class="ob-editor">
-              <div class="ob-config">
-                <div><label for="ob-name">Campaign name</label><input type="text" id="ob-name"
-                    placeholder="e.g. March Promo" /></div>
-                <div><label for="ob-type">Type</label><select id="ob-type">
-                    <option value="general">General</option>
-                  </select></div>
-                <div style="display:flex;flex-direction:column;flex:1;min-height:0;"><label for="ob-message">Message /
-                    script</label><textarea id="ob-message" placeholder="AI instructions for this campaign…"></textarea>
-                </div>
-                <div><label for="ob-concurrency">Concurrency</label><input type="number" id="ob-concurrency" value="1"
-                    min="1" max="10" /></div>
-              </div>
-              <div class="ob-contacts-panel">
-                <div class="ob-contacts-toolbar">
-                  <label class="ob-file-label" tabindex="0">Upload Excel/CSV <input type="file" id="ob-file-upload"
-                      accept=".xlsx,.xls,.csv" style="display:none;" /></label>
-                  <button type="button" id="ob-add-row">+ Add row</button>
-                  <span id="ob-contacts-count" style="font-size:0.8rem;color:var(--muted);margin-left:auto;">0
-                    contacts</span>
-                </div>
-                <div class="ob-contacts-wrap">
-                  <table class="ob-contacts-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Phone</th>
-                        <th>Email</th>
-                        <th>Extra</th>
-                        <th></th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody id="ob-contacts-tbody"></tbody>
-                  </table>
-                </div>
-                <div class="ob-progress" id="ob-progress" style="display:none;">
-                  <div class="ob-progress-bar">
-                    <div class="ob-progress-fill" id="ob-progress-fill" style="width:0%"></div>
-                  </div>
-                  <div class="ob-progress-text" id="ob-progress-text"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer" id="outbound-modal-footer">
-          <span class="status" id="ob-footer-status"></span>
-          <button type="button" id="ob-cancel-btn"
-            style="padding:0.5rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:500;">Cancel</button>
-          <button type="button" id="ob-save-btn"
-            style="padding:0.5rem 1.25rem;border-radius:8px;border:none;background:#0ea5e9;color:#fff;cursor:pointer;font-weight:600;display:none;">Save
-            Draft</button>
-          <button type="button" id="ob-start-btn"
-            style="padding:0.5rem 1.25rem;border-radius:8px;border:none;background:#059669;color:#fff;cursor:pointer;font-weight:600;display:none;">Start
-            Campaign</button>
-          <button type="button" id="ob-pause-btn"
-            style="padding:0.5rem 1.25rem;border-radius:8px;border:none;background:#d97706;color:#fff;cursor:pointer;font-weight:600;display:none;">Pause</button>
-        </div>
-      </div>
-    </div>
-
     <!-- Missed calls modal -->
-    <div class="modal-overlay outbound-modal missed-modal" id="missed-calls-modal" role="dialog" aria-modal="true"
+    <div class="modal-overlay wide-modal missed-modal" id="missed-calls-modal" role="dialog" aria-modal="true"
       aria-labelledby="missed-calls-modal-title">
       <div class="modal">
         <div class="modal-header">
@@ -3387,7 +2876,6 @@
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
       if (document.getElementById("missed-calls-modal").classList.contains("open") && window.closeMissedCallsModal) window.closeMissedCallsModal();
-      else if (document.getElementById("outbound-modal").classList.contains("open")) closeOutboundModal();
       else if (document.getElementById("settings-modal").classList.contains("open")) closeSettingsModal();
       else if (document.getElementById("modal").classList.contains("open")) requestCloseModal();
     });
@@ -3415,7 +2903,7 @@
       if (semanticBlock) semanticBlock.classList.toggle("hidden", isServerVad);
     }
     function populateSettingsForm(data) {
-      var keys = ["TRANSCRIPTION_MODEL", "TRANSCRIPT_ENHANCEMENT_ENABLED", "OPENAI_REALTIME_MODEL", "REALTIME_REASONING_EFFORT", "TRANSCRIPT_ENHANCEMENT_MODEL", "CALL_RECORDING_ENABLED", "VOICE", "ASSISTANT_LANGUAGE", "LANGUAGE_SWITCH_POLICY", "ASSISTANT_ACCENT", "ASSISTANT_ACCENT_STRENGTH", "COMPANY_NAME", "AGENT_NAME", "HUMAN_TRANSFER_ENABLED", "HUMAN_TRANSFER_DIAL_NUMBER", "GOOGLE_CALENDAR_ID", "BOOKING_SLOT_DURATION_MINUTES", "BUSINESS_APPOINTMENT_OPENING_TIME", "BUSINESS_APPOINTMENT_CLOSING_TIME", "AVAILABILITY_MAX_SLOTS_PER_BUCKET_PER_DAY", "BOOKING_DAYS_ENABLED", "VAD_THRESHOLD", "VAD_SILENCE_DURATION_MS", "VAD_PREFIX_PADDING_MS", "VAD_DEBOUNCE_AFTER_OUTGOING_MS", "VAD_INTERRUPTION_CONFIRM_MS", "VAD_MODE", "VAD_EAGERNESS"];
+      var keys = ["TRANSCRIPTION_MODEL", "TRANSCRIPT_ENHANCEMENT_ENABLED", "OPENAI_REALTIME_MODEL", "REALTIME_REASONING_EFFORT", "TRANSCRIPT_ENHANCEMENT_MODEL", "CALL_RECORDING_ENABLED", "VOICE", "ASSISTANT_TONE", "ASSISTANT_WARMTH", "ASSISTANT_EXPRESSIVENESS", "ASSISTANT_PACING", "ASSISTANT_LANGUAGE", "LANGUAGE_SWITCH_POLICY", "ASSISTANT_ACCENT", "ASSISTANT_ACCENT_STRENGTH", "COMPANY_NAME", "AGENT_NAME", "HUMAN_TRANSFER_ENABLED", "HUMAN_TRANSFER_DIAL_NUMBER", "GOOGLE_CALENDAR_ID", "BOOKING_SLOT_DURATION_MINUTES", "BUSINESS_APPOINTMENT_OPENING_TIME", "BUSINESS_APPOINTMENT_CLOSING_TIME", "AVAILABILITY_MAX_SLOTS_PER_BUCKET_PER_DAY", "BOOKING_DAYS_ENABLED", "VAD_THRESHOLD", "VAD_SILENCE_DURATION_MS", "VAD_PREFIX_PADDING_MS", "VAD_DEBOUNCE_AFTER_OUTGOING_MS", "VAD_INTERRUPTION_CONFIRM_MS", "VAD_MODE", "VAD_EAGERNESS"];
       keys.forEach(function (key) {
         var el = document.getElementById("setting-" + key) || document.querySelector("[name=\"" + key + "\"]");
         if (!el) return;
@@ -3426,7 +2914,7 @@
       updateVadFieldsVisibility();
     }
     function collectSettingsForm() {
-      var keys = ["TRANSCRIPTION_MODEL", "TRANSCRIPT_ENHANCEMENT_ENABLED", "OPENAI_REALTIME_MODEL", "REALTIME_REASONING_EFFORT", "TRANSCRIPT_ENHANCEMENT_MODEL", "CALL_RECORDING_ENABLED", "VOICE", "ASSISTANT_LANGUAGE", "LANGUAGE_SWITCH_POLICY", "ASSISTANT_ACCENT", "ASSISTANT_ACCENT_STRENGTH", "COMPANY_NAME", "AGENT_NAME", "HUMAN_TRANSFER_ENABLED", "HUMAN_TRANSFER_DIAL_NUMBER", "GOOGLE_CALENDAR_ID", "BOOKING_SLOT_DURATION_MINUTES", "BUSINESS_APPOINTMENT_OPENING_TIME", "BUSINESS_APPOINTMENT_CLOSING_TIME", "AVAILABILITY_MAX_SLOTS_PER_BUCKET_PER_DAY", "BOOKING_DAYS_ENABLED", "VAD_PREFIX_PADDING_MS", "VAD_DEBOUNCE_AFTER_OUTGOING_MS", "VAD_INTERRUPTION_CONFIRM_MS", "VAD_MODE"];
+      var keys = ["TRANSCRIPTION_MODEL", "TRANSCRIPT_ENHANCEMENT_ENABLED", "OPENAI_REALTIME_MODEL", "REALTIME_REASONING_EFFORT", "TRANSCRIPT_ENHANCEMENT_MODEL", "CALL_RECORDING_ENABLED", "VOICE", "ASSISTANT_TONE", "ASSISTANT_WARMTH", "ASSISTANT_EXPRESSIVENESS", "ASSISTANT_PACING", "ASSISTANT_LANGUAGE", "LANGUAGE_SWITCH_POLICY", "ASSISTANT_ACCENT", "ASSISTANT_ACCENT_STRENGTH", "COMPANY_NAME", "AGENT_NAME", "HUMAN_TRANSFER_ENABLED", "HUMAN_TRANSFER_DIAL_NUMBER", "GOOGLE_CALENDAR_ID", "BOOKING_SLOT_DURATION_MINUTES", "BUSINESS_APPOINTMENT_OPENING_TIME", "BUSINESS_APPOINTMENT_CLOSING_TIME", "AVAILABILITY_MAX_SLOTS_PER_BUCKET_PER_DAY", "BOOKING_DAYS_ENABLED", "VAD_PREFIX_PADDING_MS", "VAD_DEBOUNCE_AFTER_OUTGOING_MS", "VAD_INTERRUPTION_CONFIRM_MS", "VAD_MODE"];
       var vadModeEl = document.getElementById("setting-VAD_MODE");
       var isServerVad = vadModeEl && (vadModeEl.value || "").toLowerCase() === "server_vad";
       if (isServerVad) keys.push("VAD_THRESHOLD", "VAD_SILENCE_DURATION_MS");
@@ -3497,415 +2985,6 @@
     });
 
     // =========================================================================
-    // Outbound campaigns module
-    // =========================================================================
-    (function () {
-      var obModal = document.getElementById("outbound-modal");
-      var obListView = document.getElementById("ob-list-view");
-      var obEditorView = document.getElementById("ob-editor-view");
-      var obListEl = document.getElementById("ob-campaign-list");
-      var obListStatus = document.getElementById("ob-list-status");
-      var obFooterStatus = document.getElementById("ob-footer-status");
-      var obSaveBtn = document.getElementById("ob-save-btn");
-      var obStartBtn = document.getElementById("ob-start-btn");
-      var obPauseBtn = document.getElementById("ob-pause-btn");
-      var obProgress = document.getElementById("ob-progress");
-      var obProgressFill = document.getElementById("ob-progress-fill");
-      var obProgressText = document.getElementById("ob-progress-text");
-      var obTypeSelect = document.getElementById("ob-type");
-      var obTbody = document.getElementById("ob-contacts-tbody");
-      var obContactsCount = document.getElementById("ob-contacts-count");
-      var campaignTypes = {};
-      var currentCampaignId = null;
-      var obPollTimer = null;
-
-      function obHeaders(json) {
-        var h = {};
-        if (json) h["Content-Type"] = "application/json";
-        if (window.DASHBOARD_KEY) h["X-Dashboard-Key"] = window.DASHBOARD_KEY;
-        return h;
-      }
-      function obUrl(path) {
-        var u = path;
-        if (window.DASHBOARD_KEY) u += (u.indexOf("?") >= 0 ? "&" : "?") + "key=" + encodeURIComponent(window.DASHBOARD_KEY);
-        return u;
-      }
-
-      window.closeOutboundModal = function () {
-        obModal.classList.remove("open");
-        if (obPollTimer) { clearInterval(obPollTimer); obPollTimer = null; }
-      };
-
-      function openOutboundModal() {
-        obModal.classList.add("open");
-        showListView();
-      }
-
-      function showListView() {
-        obListView.style.display = "";
-        obEditorView.style.display = "none";
-        obSaveBtn.style.display = "none";
-        obStartBtn.style.display = "none";
-        obPauseBtn.style.display = "none";
-        currentCampaignId = null;
-        if (obPollTimer) { clearInterval(obPollTimer); obPollTimer = null; }
-        loadCampaigns();
-      }
-
-      function showEditorView(campaign) {
-        obListView.style.display = "none";
-        obEditorView.style.display = "flex";
-        obFooterStatus.textContent = "";
-        currentCampaignId = campaign ? campaign.id : null;
-        document.getElementById("ob-name").value = campaign ? (campaign.name || "") : "";
-        document.getElementById("ob-concurrency").value = campaign ? (campaign.concurrency || 1) : 1;
-        obTbody.innerHTML = "";
-        updateContactsCount();
-        obProgress.style.display = "none";
-
-        if (campaign) {
-          obTypeSelect.value = campaign.campaign_type || "general";
-          document.getElementById("ob-message").value = campaign.message_template || "";
-        } else {
-          var firstKey = obTypeSelect.options.length ? obTypeSelect.options[0].value : "general";
-          obTypeSelect.value = firstKey;
-          var typeCfg = campaignTypes[firstKey] || {};
-          document.getElementById("ob-message").value = typeCfg.default_script || "";
-        }
-
-        var isRunning = campaign && campaign.status === "running";
-        var isPaused = campaign && campaign.status === "paused";
-        var isCompleted = campaign && campaign.status === "completed";
-        var isDraft = !campaign || campaign.status === "draft";
-
-        obSaveBtn.style.display = isDraft ? "" : "none";
-        obStartBtn.style.display = (isDraft || isPaused || isCompleted) ? "" : "none";
-        obPauseBtn.style.display = isRunning ? "" : "none";
-
-        if (campaign && campaign.contacts && campaign.contacts.length) {
-          campaign.contacts.forEach(function (c) {
-            addContactRow(c.name || "", c.phone || "", c.email || "", JSON.stringify(c.custom_fields || {}), c.status, c.id);
-          });
-        }
-
-        if (isRunning || isPaused || isCompleted) {
-          obProgress.style.display = "";
-          startProgressPolling();
-        }
-      }
-
-      function addContactRow(name, phone, email, extra, status, contactId) {
-        var tr = document.createElement("tr");
-        if (contactId) tr.dataset.contactId = contactId;
-        if (status === "calling") tr.classList.add("ob-row-calling");
-        var statusBadge = status && status !== "pending" ? ' <span class="ob-badge ' + status + '">' + status + '</span>' : "";
-        // Call: disabled when already "calling". Stop: end active call. Reset: set to pending when stuck/failed
-        var isCallable = !!contactId && status !== "calling";
-        var callBtnHtml = contactId
-          ? '<button type="button" class="ob-call-btn" ' + (isCallable ? '' : 'disabled') + ' title="Call this contact">' + (status === "calling" ? "Calling" : "Call") + '</button>'
-          : '';
-        var stopBtnHtml = status === "calling" && contactId
-          ? ' <button type="button" class="ob-stop-btn" title="End this call">Stop</button>'
-          : '';
-        var resetBtnHtml = (status === "calling" || status === "failed") && contactId
-          ? ' <button type="button" class="ob-reset-btn" title="Reset to pending so you can call again">Reset</button>'
-          : '';
-        tr.innerHTML =
-          '<td><input type="text" class="ob-c-name" value="' + esc(name) + '" placeholder="Name" /></td>' +
-          '<td><input type="text" class="ob-c-phone" value="' + esc(phone) + '" placeholder="+1…" /></td>' +
-          '<td><input type="text" class="ob-c-email" value="' + esc(email) + '" placeholder="Email" /></td>' +
-          '<td><input type="text" class="ob-c-extra" value="' + esc(extra === "{}" ? "" : extra) + '" placeholder="custom JSON" />' + statusBadge + '</td>' +
-          '<td>' + callBtnHtml + stopBtnHtml + resetBtnHtml + '</td>' +
-          '<td><button type="button" class="ob-del-btn" title="Remove">&times;</button></td>';
-        tr.querySelector(".ob-del-btn").addEventListener("click", function () { tr.remove(); updateContactsCount(); });
-        var callBtn = tr.querySelector(".ob-call-btn");
-        if (callBtn) {
-          callBtn.addEventListener("click", function () { callSingleContact(contactId, callBtn); });
-        }
-        var stopBtn = tr.querySelector(".ob-stop-btn");
-        if (stopBtn) {
-          stopBtn.addEventListener("click", function () { stopContact(contactId, stopBtn); });
-        }
-        var resetBtn = tr.querySelector(".ob-reset-btn");
-        if (resetBtn) {
-          resetBtn.addEventListener("click", function () { resetContact(contactId, resetBtn); });
-        }
-        obTbody.appendChild(tr);
-        updateContactsCount();
-      }
-
-      function stopContact(contactId, btn) {
-        if (!currentCampaignId || !contactId) return;
-        btn.disabled = true;
-        btn.textContent = "Stopping…";
-        fetch(obUrl("/outbound/campaigns/" + currentCampaignId + "/contacts/" + contactId + "/stop"), {
-          method: "POST", headers: obHeaders(true), credentials: "include"
-        })
-          .then(function (r) { if (!r.ok) return r.json().then(function (o) { throw new Error(o.detail || r.statusText); }); return r.json(); })
-          .then(function () {
-            obFooterStatus.textContent = "Call ended. Refreshing…";
-            startProgressPolling();
-            setTimeout(function () { loadCampaignEditor(currentCampaignId); }, 1500);
-          })
-          .catch(function (err) {
-            btn.disabled = false;
-            btn.textContent = "Stop";
-            obFooterStatus.textContent = "Stop failed: " + err.message;
-          });
-      }
-
-      function resetContact(contactId, btn) {
-        if (!currentCampaignId || !contactId) return;
-        btn.disabled = true;
-        btn.textContent = "Resetting…";
-        fetch(obUrl("/outbound/campaigns/" + currentCampaignId + "/contacts/" + contactId + "/reset"), {
-          method: "POST", headers: obHeaders(true), credentials: "include"
-        })
-          .then(function (r) { if (!r.ok) return r.json().then(function (o) { throw new Error(o.detail || r.statusText); }); return r.json(); })
-          .then(function () {
-            obFooterStatus.textContent = "Contact reset to pending. You can call again.";
-            loadCampaignEditor(currentCampaignId);
-          })
-          .catch(function (err) {
-            btn.disabled = false;
-            btn.textContent = "Reset";
-            obFooterStatus.textContent = "Reset failed: " + err.message;
-          });
-      }
-
-      function callSingleContact(contactId, btn) {
-        if (!currentCampaignId || !contactId) return;
-        btn.disabled = true;
-        btn.textContent = "Calling…";
-        fetch(obUrl("/outbound/campaigns/" + currentCampaignId + "/contacts/" + contactId + "/call"), {
-          method: "POST", headers: obHeaders(true), credentials: "include"
-        })
-          .then(function (r) { if (!r.ok) return r.json().then(function (o) { throw new Error(o.detail || r.statusText); }); return r.json(); })
-          .then(function (data) {
-            btn.textContent = "Calling";
-            obFooterStatus.textContent = data.message || "Call initiated.";
-            startProgressPolling();
-          })
-          .catch(function (err) {
-            btn.textContent = "Call";
-            btn.disabled = false;
-            obFooterStatus.textContent = "Call failed: " + err.message;
-          });
-      }
-
-      function updateContactsCount() {
-        var n = obTbody.querySelectorAll("tr").length;
-        obContactsCount.textContent = n + " contact" + (n !== 1 ? "s" : "");
-      }
-
-      function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
-
-      function collectContactsFromTable() {
-        var rows = obTbody.querySelectorAll("tr");
-        var contacts = [];
-        rows.forEach(function (tr) {
-          var phone = (tr.querySelector(".ob-c-phone") || {}).value || "";
-          if (!phone.trim()) return;
-          var extraRaw = (tr.querySelector(".ob-c-extra") || {}).value || "";
-          var custom = {};
-          if (extraRaw.trim()) { try { custom = JSON.parse(extraRaw); } catch (_) { custom = {}; } }
-          contacts.push({
-            name: ((tr.querySelector(".ob-c-name") || {}).value || "").trim(),
-            phone: phone.trim(),
-            email: ((tr.querySelector(".ob-c-email") || {}).value || "").trim(),
-            custom_fields: custom,
-          });
-        });
-        return contacts;
-      }
-
-      // Load built-in campaign type presets
-      function loadCampaignTypes() {
-        fetch(obUrl("/outbound/campaign-types"), { headers: obHeaders(false), credentials: "include" })
-          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(r.statusText || r.status)); })
-          .then(function (data) {
-            campaignTypes = data.campaign_types || {};
-            var keys = Object.keys(campaignTypes);
-            if (keys.length === 0) return;
-            obTypeSelect.innerHTML = "";
-            keys.forEach(function (key) {
-              var opt = document.createElement("option");
-              opt.value = key;
-              opt.textContent = campaignTypes[key].label || key;
-              obTypeSelect.appendChild(opt);
-            });
-          }).catch(function (err) {
-            console.warn("Failed to load campaign types:", err.message || err);
-          });
-      }
-
-      // Load campaigns list
-      function loadCampaigns() {
-        obListStatus.textContent = "Loading…";
-        obListEl.innerHTML = "";
-        fetch(obUrl("/outbound/campaigns"), { headers: obHeaders(false), credentials: "include" })
-          .then(function (r) {
-            if (r.status === 403) { obListStatus.textContent = "Outbound calling not enabled."; return null; }
-            if (!r.ok) throw new Error(r.statusText);
-            return r.json();
-          })
-          .then(function (data) {
-            if (!data) return;
-            obListStatus.textContent = data.total ? data.total + " campaign" + (data.total !== 1 ? "s" : "") : "No campaigns yet.";
-            (data.campaigns || []).forEach(function (c) {
-              var li = document.createElement("li");
-              li.dataset.id = c.id;
-              li.innerHTML = '<span class="ob-c-name">' + esc(c.name) + '</span><span class="ob-c-type">' + esc(c.campaign_type) + '</span><span class="ob-badge ' + c.status + '">' + c.status + '</span>';
-              li.addEventListener("click", function () { loadAndEditCampaign(c.id); });
-              obListEl.appendChild(li);
-            });
-          })
-          .catch(function (err) { obListStatus.textContent = "Error: " + err.message; });
-      }
-
-      function loadAndEditCampaign(id) {
-        obFooterStatus.textContent = "Loading…";
-        fetch(obUrl("/outbound/campaigns/" + id), { headers: obHeaders(false), credentials: "include" })
-          .then(function (r) { if (!r.ok) throw new Error(r.statusText); return r.json(); })
-          .then(function (data) { showEditorView(data.campaign); obFooterStatus.textContent = ""; })
-          .catch(function (err) { obFooterStatus.textContent = "Error: " + err.message; });
-      }
-
-      // Save draft (create or update)
-      function saveDraft() {
-        var name = document.getElementById("ob-name").value.trim();
-        if (!name) { obFooterStatus.textContent = "Campaign name is required."; return; }
-        var payload = {
-          name: name,
-          campaign_type: obTypeSelect.value,
-          message_template: document.getElementById("ob-message").value,
-          concurrency: parseInt(document.getElementById("ob-concurrency").value, 10) || 1,
-        };
-        obFooterStatus.textContent = "Saving…";
-        var method = currentCampaignId ? "PATCH" : "POST";
-        var url = currentCampaignId ? "/outbound/campaigns/" + currentCampaignId : "/outbound/campaigns";
-        fetch(obUrl(url), { method: method, headers: obHeaders(true), body: JSON.stringify(payload), credentials: "include" })
-          .then(function (r) { if (!r.ok) return r.json().then(function (o) { throw new Error(o.detail || r.statusText); }); return r.json(); })
-          .then(function (data) {
-            var id = currentCampaignId || (data.campaign && data.campaign.id);
-            currentCampaignId = id;
-            var contacts = collectContactsFromTable();
-            if (contacts.length > 0 && id) {
-              return fetch(obUrl("/outbound/campaigns/" + id + "/contacts"), { method: "POST", headers: obHeaders(true), body: JSON.stringify({ contacts: contacts }), credentials: "include" })
-                .then(function (r2) { if (!r2.ok) return r2.json().then(function (o) { throw new Error(o.detail || r2.statusText); }); return r2.json(); })
-                .then(function () { obFooterStatus.textContent = "Saved."; loadAndEditCampaign(id); });
-            }
-            obFooterStatus.textContent = "Saved.";
-            if (id) loadAndEditCampaign(id);
-          })
-          .catch(function (err) { obFooterStatus.textContent = "Error: " + err.message; });
-      }
-
-      // Start campaign
-      function startCampaign() {
-        if (!currentCampaignId) return;
-        obFooterStatus.textContent = "Starting…";
-        fetch(obUrl("/outbound/campaigns/" + currentCampaignId + "/start"), { method: "POST", headers: obHeaders(true), credentials: "include" })
-          .then(function (r) { if (!r.ok) return r.json().then(function (o) { throw new Error(o.detail || r.statusText); }); return r.json(); })
-          .then(function () { obFooterStatus.textContent = "Campaign started."; loadAndEditCampaign(currentCampaignId); })
-          .catch(function (err) { obFooterStatus.textContent = "Error: " + err.message; });
-      }
-
-      // Pause campaign
-      function pauseCampaign() {
-        if (!currentCampaignId) return;
-        obFooterStatus.textContent = "Pausing…";
-        fetch(obUrl("/outbound/campaigns/" + currentCampaignId + "/pause"), { method: "POST", headers: obHeaders(true), credentials: "include" })
-          .then(function (r) { if (!r.ok) return r.json().then(function (o) { throw new Error(o.detail || r.statusText); }); return r.json(); })
-          .then(function () { obFooterStatus.textContent = "Paused."; loadAndEditCampaign(currentCampaignId); })
-          .catch(function (err) { obFooterStatus.textContent = "Error: " + err.message; });
-      }
-
-      // Progress polling (also refreshes contact rows when calling count drops so highlighted row updates)
-      var obLastCallingCount = 0;
-      function startProgressPolling() {
-        if (obPollTimer) clearInterval(obPollTimer);
-        obLastCallingCount = 0;
-        pollProgress();
-        obPollTimer = setInterval(pollProgress, 4000);
-      }
-      function pollProgress() {
-        if (!currentCampaignId) return;
-        fetch(obUrl("/outbound/campaigns/" + currentCampaignId + "/status"), { headers: obHeaders(false), credentials: "include" })
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (data) {
-            if (!data) return;
-            var p = data.progress || {};
-            var total = p.total || 0;
-            var calling = p.calling || 0;
-            var completed = (p.completed || 0) + (p.failed || 0) + (p.skipped || 0);
-            var pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-            obProgressFill.style.width = pct + "%";
-            obProgressText.textContent = completed + "/" + total + " done" + (calling ? " (" + calling + " calling)" : "") + (p.failed ? " — " + p.failed + " failed" : "");
-            obProgress.style.display = "";
-            if (obLastCallingCount > 0 && calling === 0) {
-              loadCampaignEditor(currentCampaignId);
-            }
-            obLastCallingCount = calling;
-            if (data.campaign_status === "completed" || data.campaign_status === "paused") {
-              if (obPollTimer) { clearInterval(obPollTimer); obPollTimer = null; }
-              obPauseBtn.style.display = "none";
-              obStartBtn.style.display = (data.campaign_status === "paused" || data.campaign_status === "completed") ? "" : "none";
-            }
-          }).catch(function () { });
-      }
-
-      // Excel/CSV upload via SheetJS
-      function handleFileUpload(e) {
-        var file = e.target.files && e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function (evt) {
-          try {
-            if (typeof XLSX === "undefined") { obFooterStatus.textContent = "SheetJS not loaded yet. Try again."; return; }
-            var wb = XLSX.read(evt.target.result, { type: "array" });
-            var ws = wb.Sheets[wb.SheetNames[0]];
-            var rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-            rows.forEach(function (row) {
-              var name = row.name || row.Name || row.NAME || "";
-              var phone = row.phone || row.Phone || row.PHONE || row.phone_number || row.mobile || "";
-              var email = row.email || row.Email || row.EMAIL || "";
-              var extra = {};
-              Object.keys(row).forEach(function (k) {
-                var kl = k.toLowerCase();
-                if (["name", "phone", "email", "phone_number", "mobile"].indexOf(kl) < 0) extra[k] = row[k];
-              });
-              if (phone) addContactRow(String(name), String(phone), String(email), JSON.stringify(extra), "", "");
-            });
-            obFooterStatus.textContent = rows.length + " rows imported.";
-          } catch (err) { obFooterStatus.textContent = "File parse error: " + err.message; }
-        };
-        reader.readAsArrayBuffer(file);
-        e.target.value = "";
-      }
-
-      // Type change: prefill script (always updates for new campaigns; clears if type has no script)
-      obTypeSelect.addEventListener("change", function () {
-        if (currentCampaignId) return;
-        var cfg = campaignTypes[obTypeSelect.value] || {};
-        document.getElementById("ob-message").value = cfg.default_script || "";
-      });
-
-      // Wire up events
-      document.getElementById("outbound-btn").addEventListener("click", function () { loadCampaignTypes(); openOutboundModal(); });
-      document.getElementById("outbound-modal-close").addEventListener("click", closeOutboundModal);
-      document.getElementById("ob-cancel-btn").addEventListener("click", closeOutboundModal);
-      obModal.addEventListener("click", function (e) { if (e.target === obModal) closeOutboundModal(); });
-      document.getElementById("ob-new-campaign-btn").addEventListener("click", function () { showEditorView(null); });
-      document.getElementById("ob-back-to-list").addEventListener("click", showListView);
-      document.getElementById("ob-add-row").addEventListener("click", function () { addContactRow("", "", "", "", "", ""); });
-      document.getElementById("ob-file-upload").addEventListener("change", handleFileUpload);
-      obSaveBtn.addEventListener("click", saveDraft);
-      obStartBtn.addEventListener("click", startCampaign);
-      obPauseBtn.addEventListener("click", pauseCampaign);
-    })();
-
-    // =========================================================================
     // Missed calls module — list, call back with AI, click-to-call, mark handled
     // =========================================================================
     (function () {
@@ -3965,7 +3044,6 @@
         var rows = items.map(function (it) {
           var from = it.from_number || "—";
           var telHref = (from && from.charAt(0) === "+") ? "tel:" + from : ("tel:" + (from || "").replace(/[^0-9+]/g, ""));
-          var dangerAi = (!window.DASHBOARD_KEY && !it.call_sid);
           var timeStr = formatTime(it.start_time);
           var reasonClass = "mc-reason mc-reason-" + mcEsc(it.reason || "");
           var sid = mcEsc(it.call_sid || "");
@@ -3978,7 +3056,6 @@
               '<td><span class="' + reasonClass + '">' + mcEsc(mcFormatReason(it.reason)) + '</span></td>' +
               '<td>' +
                 '<div class="mc-actions">' +
-                  '<button type="button" class="mc-btn-ai" data-action="call-ai"' + (dangerAi ? ' disabled' : '') + '>Call with AI</button>' +
                   '<a class="mc-btn mc-btn-tel" href="' + mcEsc(telHref) + '">Call yourself</a>' +
                   '<button type="button" class="mc-btn-handled" data-action="handled">Mark handled</button>' +
                 '</div>' +
@@ -4031,33 +3108,7 @@
         var phone = tr.getAttribute("data-phone") || "";
         var action = btn.getAttribute("data-action");
 
-        if (action === "call-ai") {
-          if (btn.disabled) return;
-          btn.disabled = true;
-          btn.textContent = "Calling…";
-          mcFooterStatus.textContent = "";
-          mcFooterStatus.className = "status";
-          fetch(mcUrl("/missed-calls/" + encodeURIComponent(callSid) + "/callback-ai"), {
-            method: "POST",
-            headers: mcHeaders(true),
-            body: JSON.stringify({ phone: phone }),
-          })
-            .then(function (r) {
-              if (!r.ok) return r.text().then(function (t) { throw new Error("HTTP " + r.status + ": " + t); });
-              return r.json();
-            })
-            .then(function (data) {
-              mcFooterStatus.textContent = (data && data.message) || "Call started";
-              mcFooterStatus.className = "status success";
-              btn.textContent = "Called";
-            })
-            .catch(function (err) {
-              btn.disabled = false;
-              btn.textContent = "Call with AI";
-              mcFooterStatus.textContent = "Failed: " + (err && err.message ? err.message : "error");
-              mcFooterStatus.className = "status error";
-            });
-        } else if (action === "handled") {
+        if (action === "handled") {
           btn.disabled = true;
           fetch(mcUrl("/missed-calls/" + encodeURIComponent(callSid) + "/handled"), {
             method: "POST",
@@ -4103,8 +3154,7 @@
       }
     });
   </script>
-  <!-- SheetJS for Excel/CSV parsing (loaded async, only used by outbound modal) -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" async></script>
+  <!--   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" async></script>
 </body>
 
 </html>

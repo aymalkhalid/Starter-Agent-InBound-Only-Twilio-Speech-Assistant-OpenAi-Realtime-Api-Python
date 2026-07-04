@@ -26,10 +26,6 @@ class ConnectionState:
         self.call_sid: Optional[str] = None
         self.caller_phone_number: Optional[str] = None
         self.twilio_custom_parameters: dict[str, str] = {}
-        # Set in media-stream when outbound context resolved from CallSid cache; used so initial greeting uses minimal item
-        self.is_outbound_call: bool = False
-        self.outbound_campaign_id: Optional[str] = None
-        self.outbound_contact_id: Optional[str] = None
         # Timestamp (seconds) when we last sent assistant audio to Twilio (for echo debounce)
         self.last_outgoing_audio_at: Optional[float] = None
         # Call outcome for context-aware goodbye (set by save_call_record / book_appointment)
@@ -186,11 +182,6 @@ class WebSocketConnectionManager:
                             "incoming_caller_number": caller_from_params,
                             "callSid": call_sid,
                         })
-                    direction = (custom_parameters.get("direction") or "").strip().lower()
-                    if direction == "outbound":
-                        self.state.is_outbound_call = True
-                        self.state.outbound_campaign_id = custom_parameters.get("campaign_id")
-                        self.state.outbound_contact_id = custom_parameters.get("contact_id")
                     # If we didn't get caller from customParameters, use cache from POST webhook.
                     if not getattr(self.state, "caller_phone_number", None) and call_sid:
                         from_cache = TwilioService.get_caller_for_call(call_sid)
